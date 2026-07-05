@@ -1,0 +1,11 @@
+.git
+.github
+.cursor
+.wrangler
+**/node_modules
+**/.tmp
+**/dist
+**/*.log
+**/.DS_Store
+server/.wrangler
+web/node_modules/.tmp
