@@ -18,6 +18,7 @@ import { FileManagerWidget } from "@/widgets/FileManagerWidget";
 import { QuickCommandsWidget } from "@/widgets/QuickCommandsWidget";
 import { StatusWidget } from "@/widgets/StatusWidget";
 import { NetworkStatusWidget } from "@/widgets/NetworkStatusWidget";
+import { ProcessStatusWidget } from "@/widgets/ProcessStatusWidget";
 import { TerminalWidget } from "@/widgets/TerminalWidget";
 import { AddGroupDialog } from "./AddGroupDialog";
 import { AddQuickCommandDialog } from "./AddQuickCommandDialog";
@@ -677,7 +678,7 @@ export function DashboardView() {
             );
           }
 
-          if (widget.type === "status" || widget.type === "network") {
+          if (widget.type === "status" || widget.type === "network" || widget.type === "process") {
             return (
               <div className="widget-no-drag flex items-center gap-1">
                 <Button
@@ -808,6 +809,19 @@ export function DashboardView() {
             );
           }
 
+          if (widget.type === "process") {
+            return (
+              <ProcessStatusWidget
+                activeServerId={activeServerId}
+                pollIntervalMs={
+                  parseStatusWidgetConfig(widget.config_json).pollIntervalMs
+                }
+                sessions={sessions}
+                tree={tree}
+              />
+            );
+          }
+
           if (widget.type === "quick_commands") {
             return (
               <QuickCommandsWidget
@@ -888,11 +902,14 @@ export function DashboardView() {
           )?.config_json ?? null
         }
         titleKey={
-          dashboard.widgets.find(
-            (widget) => widget.id === pollSettingsWidgetId,
-          )?.type === "network"
-            ? "network.settingsTitle"
-            : "status.settingsTitle"
+          (() => {
+            const type = dashboard.widgets.find(
+              (widget) => widget.id === pollSettingsWidgetId,
+            )?.type;
+            if (type === "network") return "network.settingsTitle";
+            if (type === "process") return "process.settingsTitle";
+            return "status.settingsTitle";
+          })()
         }
         open={pollSettingsWidgetId !== null}
         onOpenChange={(open) => {

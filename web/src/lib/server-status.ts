@@ -17,6 +17,18 @@ export interface ServerStatusMetrics {
   netRxRate: number | null;
   netTxRate: number | null;
   netInterfaces: NetInterfaceMetrics[];
+  processCount: number | null;
+  topProcesses: ProcessMetrics[];
+}
+
+export interface ProcessMetrics {
+  pid: number;
+  user: string;
+  cpuPercent: number;
+  memPercent: number;
+  rssKb: number;
+  stat: string;
+  command: string;
 }
 
 export interface NetInterfaceMetrics {
@@ -64,6 +76,11 @@ export function formatLoad(value: number | null): string {
 export function formatBitrate(bytesPerSec: number | null): string {
   if (bytesPerSec === null || !Number.isFinite(bytesPerSec)) return "-";
   return `${formatBytes(bytesPerSec)}/s`;
+}
+
+export function formatPercent(value: number | null, digits = 1): string {
+  if (value === null || !Number.isFinite(value)) return "-";
+  return `${value.toFixed(digits)}%`;
 }
 
 export function computeNetRates(

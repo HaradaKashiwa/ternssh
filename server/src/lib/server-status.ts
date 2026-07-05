@@ -23,6 +23,8 @@ export interface ServerStatusMetrics {
   netRxRate: number | null;
   netTxRate: number | null;
   netInterfaces: NetInterfaceMetrics[];
+  processCount: number | null;
+  topProcesses: ProcessMetrics[];
 }
 
 export interface NetInterfaceMetrics {
@@ -39,6 +41,16 @@ export interface NetInterfaceSnapshot {
   txBytes: number;
 }
 
+export interface ProcessMetrics {
+  pid: number;
+  user: string;
+  cpuPercent: number;
+  memPercent: number;
+  rssKb: number;
+  stat: string;
+  command: string;
+}
+
 const STATUS_SCRIPT = [
   'echo "LOAD:$(cut -d" " -f1-3 /proc/loadavg 2>/dev/null)"',
   'echo "CPU:$(awk \'/^cpu / {print $2+$3+$4+$5+$6+$7+$8+$9, $5+$6; exit}\' /proc/stat 2>/dev/null)"',
@@ -48,6 +60,8 @@ const STATUS_SCRIPT = [
   'awk \'$1 ~ /:/ {gsub(/:/,"",$1); if ($1!="lo") print "IF:"$1" "$2" "$10}\' /proc/net/dev 2>/dev/null',
   'echo "UPTIME:$(cut -d" " -f1 /proc/uptime 2>/dev/null)"',
   'echo "OS:$(uname -sr 2>/dev/null)"',
+  'echo "PROCCNT:$(ps -eo pid= 2>/dev/null | wc -l | tr -d " ")"',
+  'ps aux --sort=-%cpu 2>/dev/null | awk \'NR>1 && NR<=11 {name=$11; for(i=12;i<=NF;i++) name=name" "$i; if(length(name)>48) name=substr(name,1,48); gsub(/\\|/,"/",name); print "PROC:"$2"|"$1"|"$3"|"$4"|"$6"|"$8"|"name}\'',
 ].join("; ");
 
 // Run via a dedicated SSH exec channel (non-interactive). Do not nest `/bin/sh -c`
@@ -87,12 +101,15 @@ export function parseStatusOutput(output: string): {
     netRxRate: null,
     netTxRate: null,
     netInterfaces: [],
+    processCount: null,
+    topProcesses: [],
   };
   let netRxBytes: number | null = null;
   let netTxBytes: number | null = null;
   let cpuTotalJiffies: number | null = null;
   let cpuIdleJiffies: number | null = null;
   const netInterfaces: NetInterfaceSnapshot[] = [];
+  const topProcesses: ProcessMetrics[] = [];
 
   for (const line of output.split("\n")) {
     const trimmed = line.trim();
@@ -169,6 +186,36 @@ export function parseStatusOutput(output: string): {
       case "OS":
         metrics.osInfo = value;
         break;
+      case "PROCCNT":
+        metrics.processCount = parseNumber(value);
+        break;
+      case "PROC": {
+        if (!value) break;
+        const parts = value.split("|");
+        if (parts.length < 7) break;
+        const pid = parseNumber(parts[0]);
+        const cpuPercent = parseNumber(parts[2]);
+        const memPercent = parseNumber(parts[3]);
+        const rssKb = parseNumber(parts[4]);
+        if (
+          pid === null ||
+          cpuPercent === null ||
+          memPercent === null ||
+          rssKb === null
+        ) {
+          break;
+        }
+        topProcesses.push({
+          pid,
+          user: parts[1] ?? "-",
+          cpuPercent,
+          memPercent,
+          rssKb,
+          stat: parts[5] ?? "-",
+          command: parts[6] ?? "-",
+        });
+        break;
+      }
     }
   }
 
@@ -178,6 +225,7 @@ export function parseStatusOutput(output: string): {
     rxRate: null,
     txRate: null,
   }));
+  metrics.topProcesses = topProcesses;
 
   return {
     metrics,
