@@ -7,6 +7,7 @@ import {
   parseStatusOutput,
   STATUS_COMMAND,
 } from "../lib/server-status";
+import { connectToHost } from "../lib/resolve-host";
 import { SSHSession } from "../ssh/session";
 import type { SSHConnectionConfig } from "../ssh/types";
 
@@ -292,12 +293,7 @@ export class SshSession extends DurableObject<Env> {
     this.closeStatusSession();
 
     this.statusBootstrapping = (async () => {
-      const { connect } = await import("cloudflare:sockets");
-      const hostname = config.host.includes(":")
-        ? `[${config.host}]`
-        : config.host;
-      const socket = connect({ hostname, port: config.port });
-      await socket.opened;
+      const socket = await connectToHost(config.host, config.port);
 
       const noopWs = {
         send: () => {},
@@ -454,12 +450,7 @@ export class SshSession extends DurableObject<Env> {
     if (this.sshSession) return;
 
     this.bootstrapping = (async () => {
-      const { connect } = await import("cloudflare:sockets");
-      const hostname = config.host.includes(":")
-        ? `[${config.host}]`
-        : config.host;
-      const socket = connect({ hostname, port: config.port });
-      await socket.opened;
+      const socket = await connectToHost(config.host, config.port);
 
       this.connectionConfig = config;
       const session = new SSHSession(ws, socket, config, false, false);
