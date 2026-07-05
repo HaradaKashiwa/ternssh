@@ -7,10 +7,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { en } from "./locales/en";
-import { zh, type Messages } from "./locales/zh";
-
-export type Locale = "zh" | "en";
+import {
+  getDefaultLocale,
+  getLocaleDefinition,
+  isLocale,
+  type Locale,
+  type Messages,
+} from "./locales/index";
 
 const STORAGE_KEY = "ternssh-locale";
 
@@ -22,12 +25,6 @@ interface I18nContextValue {
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
-
-function getInitialLocale(): Locale {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === "zh" || stored === "en") return stored;
-  return navigator.language.toLowerCase().startsWith("zh") ? "zh" : "en";
-}
 
 function lookup(messages: Messages, key: string): string | undefined {
   return key.split(".").reduce<unknown>((current, part) => {
@@ -49,17 +46,18 @@ function interpolate(
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(getInitialLocale);
-
-  const messages = locale === "zh" ? zh : en;
+  const [locale, setLocaleState] = useState<Locale>(getDefaultLocale);
+  const { messages, htmlLang } = getLocaleDefinition(locale);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, locale);
-    document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
-  }, [locale]);
+    document.documentElement.lang = htmlLang;
+  }, [htmlLang, locale]);
 
   const setLocale = useCallback((next: Locale) => {
-    setLocaleState(next);
+    if (isLocale(next)) {
+      setLocaleState(next);
+    }
   }, []);
 
   const t = useCallback(
@@ -90,3 +88,5 @@ export function useI18n() {
 export function useT() {
   return useI18n().t;
 }
+
+export type { Locale };

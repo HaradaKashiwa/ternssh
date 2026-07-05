@@ -25,6 +25,7 @@ export const zh = {
     openMode: "开放模式",
     settings: "设置",
     language: "语言",
+    languageHint: "选择界面显示语言",
     langZh: "中文",
     langEn: "English",
   },

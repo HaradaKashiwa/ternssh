@@ -27,6 +27,8 @@ export interface ServerListWidgetProps extends WidgetProps {
   onAddServer: (groupId: string | null) => void;
   onAddGroup: (parentId: string | null) => void;
   onRenameGroup: (groupId: string, name: string) => void;
+  expanded: Set<string>;
+  onExpandedChange: (expanded: Set<string>) => void;
 }
 
 export interface TerminalWidgetProps {

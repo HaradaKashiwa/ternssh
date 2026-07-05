@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,8 +27,6 @@ export function AddQuickCommandDialog({
   const [label, setLabel] = useState("");
   const [command, setCommand] = useState("");
   const [error, setError] = useState<string | null>(null);
-
-  if (!open) return null;
 
   const reset = () => {
     setLabel("");
@@ -63,58 +62,56 @@ export function AddQuickCommandDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md bg-[var(--color-card)] p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{t("quickCommands.addTitle")}</h2>
-          <Button variant="ghost" onClick={handleClose}>
-            {t("common.close")}
-          </Button>
+    <Modal open={open} onOpenChange={onOpenChange}>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{t("quickCommands.addTitle")}</h2>
+        <Button variant="ghost" onClick={handleClose}>
+          {t("common.close")}
+        </Button>
+      </div>
+
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <div className="grid gap-2">
+          <Label htmlFor="quickCommandLabel">{t("common.name")}</Label>
+          <Input
+            id="quickCommandLabel"
+            placeholder={t("quickCommands.labelPlaceholder")}
+            required
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+          />
         </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="grid gap-2">
-            <Label htmlFor="quickCommandLabel">{t("common.name")}</Label>
-            <Input
-              id="quickCommandLabel"
-              placeholder={t("quickCommands.labelPlaceholder")}
-              required
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-            />
-          </div>
+        <div className="grid gap-2">
+          <Label htmlFor="quickCommandText">{t("quickCommands.command")}</Label>
+          <Textarea
+            id="quickCommandText"
+            placeholder={t("quickCommands.commandPlaceholder")}
+            required
+            rows={6}
+            value={command}
+            onChange={(event) => setCommand(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                event.currentTarget.form?.requestSubmit();
+              }
+            }}
+          />
+          <p className="text-[11px] text-[var(--color-muted-foreground)]">
+            {t("quickCommands.multilineHint")}
+          </p>
+        </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="quickCommandText">{t("quickCommands.command")}</Label>
-            <Textarea
-              id="quickCommandText"
-              placeholder={t("quickCommands.commandPlaceholder")}
-              required
-              rows={6}
-              value={command}
-              onChange={(event) => setCommand(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                  event.preventDefault();
-                  event.currentTarget.form?.requestSubmit();
-                }
-              }}
-            />
-            <p className="text-[11px] text-[var(--color-muted-foreground)]">
-              {t("quickCommands.multilineHint")}
-            </p>
-          </div>
+        {error && <p className="text-sm text-red-400">{error}</p>}
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
-
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={handleClose}>
-              {t("common.cancel")}
-            </Button>
-            <Button type="submit">{t("common.save")}</Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={handleClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button type="submit">{t("common.save")}</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

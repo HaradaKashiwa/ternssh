@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,16 +79,15 @@ export function StatusSettingsDialog({
   const maxSeconds = MAX_POLL_INTERVAL_MS / 1000;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md bg-[var(--color-card)] p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{t("status.settingsTitle")}</h2>
-          <Button variant="ghost" onClick={handleClose}>
-            {t("common.close")}
-          </Button>
-        </div>
+    <Modal open={open} onOpenChange={onOpenChange}>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{t("status.settingsTitle")}</h2>
+        <Button variant="ghost" onClick={handleClose}>
+          {t("common.close")}
+        </Button>
+      </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="grid gap-2">
             <Label htmlFor="statusPollInterval">{t("status.pollInterval")}</Label>
             <Input
@@ -123,7 +123,6 @@ export function StatusSettingsDialog({
             <Button type="submit">{t("common.save")}</Button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

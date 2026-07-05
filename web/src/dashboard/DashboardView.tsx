@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
-import { FolderPlus, Plus, Settings, X } from "lucide-react";
+import { FolderPlus, ChevronsDown, ChevronsUp, Plus, Settings, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api, type Dashboard, type MeResponse, type TreeNode } from "@/lib/api";
@@ -27,6 +27,7 @@ import { StatusSettingsDialog } from "./StatusSettingsDialog";
 import { AddWidgetMenu } from "./AddWidgetMenu";
 import { GridDashboard } from "./GridDashboard";
 import { findWidgetPlacement, layoutsEqual, type GridItem } from "./grid-utils";
+import { collectAllGroupIds } from "@/lib/server-tree";
 import { ADDABLE_WIDGETS, widgetTitleKey } from "./widgets";
 
 const DEFAULT_GRID_ITEM = {
@@ -78,6 +79,9 @@ export function DashboardView() {
   const [error, setError] = useState<string | null>(null);
   const [activeServerId, setActiveServerId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Record<string, ServerSession>>({});
+  const [serverListExpanded, setServerListExpanded] = useState<Set<string>>(
+    () => new Set(),
+  );
   const sessionsRef = useRef(sessions);
   sessionsRef.current = sessions;
   const [addOpen, setAddOpen] = useState(false);
@@ -343,6 +347,19 @@ export function DashboardView() {
     [dashboard?.widgets],
   );
 
+  const hasServerGroups = useMemo(
+    () => collectAllGroupIds(tree).length > 0,
+    [tree],
+  );
+
+  const expandAllServerGroups = useCallback(() => {
+    setServerListExpanded(new Set(collectAllGroupIds(tree)));
+  }, [tree]);
+
+  const collapseAllServerGroups = useCallback(() => {
+    setServerListExpanded(new Set());
+  }, []);
+
   const handleLayoutChange = useCallback((nextLayout: GridItem[]) => {
     isEditingRef.current = true;
     setLayout((current) =>
@@ -596,6 +613,26 @@ export function DashboardView() {
               <div className="widget-no-drag flex items-center gap-1">
                 <Button
                   className="widget-no-drag"
+                  disabled={!hasServerGroups}
+                  size="sm"
+                  title={t("serverList.expandAll")}
+                  variant="secondary"
+                  onClick={expandAllServerGroups}
+                >
+                  <ChevronsDown className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  className="widget-no-drag"
+                  disabled={!hasServerGroups}
+                  size="sm"
+                  title={t("serverList.collapseAll")}
+                  variant="secondary"
+                  onClick={collapseAllServerGroups}
+                >
+                  <ChevronsUp className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  className="widget-no-drag"
                   size="sm"
                   variant="secondary"
                   onClick={() => {
@@ -703,6 +740,8 @@ export function DashboardView() {
                 loading={loading}
                 moving={treeMoving}
                 context={widgetContext}
+                expanded={serverListExpanded}
+                onExpandedChange={setServerListExpanded}
                 onDeleteServer={(serverId) => void handleDeleteServer(serverId)}
                 onDeleteGroup={(groupId) => void handleDeleteGroup(groupId)}
                 onMoveItem={handleMoveItem}

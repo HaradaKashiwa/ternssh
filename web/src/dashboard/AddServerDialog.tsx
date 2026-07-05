@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,8 +67,7 @@ export function AddServerDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-lg bg-[var(--color-card)] p-6 shadow-xl">
+    <Modal className="max-w-lg" open={open} onOpenChange={onOpenChange}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{t("addServer.title")}</h2>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
@@ -164,7 +164,6 @@ export function AddServerDialog({
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

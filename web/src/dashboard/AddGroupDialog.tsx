@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,8 +24,6 @@ export function AddGroupDialog({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!open) return null;
-
   const reset = () => {
     setName("");
     setError(null);
@@ -46,43 +45,41 @@ export function AddGroupDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md bg-[var(--color-card)] p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{t("addGroup.title")}</h2>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            {t("common.close")}
-          </Button>
+    <Modal open={open} onOpenChange={onOpenChange}>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{t("addGroup.title")}</h2>
+        <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          {t("common.close")}
+        </Button>
+      </div>
+
+      <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
+        <div className="grid gap-2">
+          <Label htmlFor="groupName">{t("addGroup.name")}</Label>
+          <Input
+            id="groupName"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={t("addGroup.placeholder")}
+            required
+          />
         </div>
 
-        <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
-          <div className="grid gap-2">
-            <Label htmlFor="groupName">{t("addGroup.name")}</Label>
-            <Input
-              id="groupName"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={t("addGroup.placeholder")}
-              required
-            />
-          </div>
+        {error && <p className="text-sm text-red-400">{error}</p>}
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
-
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => onOpenChange(false)}
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? t("common.saving") : t("common.save")}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => onOpenChange(false)}
+          >
+            {t("common.cancel")}
+          </Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? t("common.saving") : t("common.save")}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

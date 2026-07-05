@@ -27,6 +27,7 @@ export const en: Messages = {
     openMode: "Open mode",
     settings: "Settings",
     language: "Language",
+    languageHint: "Choose the interface language",
     langZh: "中文",
     langEn: "English",
   },

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type DragEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type DragEvent, type MouseEvent } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -53,12 +53,15 @@ export function ServerListWidget({
   onAddServer,
   onAddGroup,
   onRenameGroup,
+  expanded,
+  onExpandedChange,
 }: ServerListWidgetProps) {
   const t = useT();
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [dragItem, setDragItem] = useState<DragItem | null>(null);
   const [dropIntent, setDropIntent] = useState<DropIntent | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
+
+  const setExpanded = onExpandedChange;
 
   useEffect(() => {
     if (!context.activeServerId) return;
@@ -81,13 +84,13 @@ export function ServerListWidget({
   );
   const counts = useMemo(() => countTreeNodes(tree), [tree]);
 
-  const expandAll = () => {
+  const expandAll = useCallback(() => {
     setExpanded(new Set(collectAllGroupIds(tree)));
-  };
+  }, [setExpanded, tree]);
 
-  const collapseAll = () => {
+  const collapseAll = useCallback(() => {
     setExpanded(new Set());
-  };
+  }, [setExpanded]);
 
   const toggleExpanded = (groupId: string) => {
     setExpanded((current) => {
@@ -203,7 +206,7 @@ export function ServerListWidget({
       onSelect: () => onDeleteServer(id),
     });
     return items;
-  }, [menu, context, onAddGroup, onAddServer, onDeleteGroup, onDeleteServer, onRenameGroup, t]);
+  }, [menu, context, collapseAll, expandAll, onAddGroup, onAddServer, onDeleteGroup, onDeleteServer, onRenameGroup, t]);
 
   const canDrop = (item: DragItem, intent: DropIntent): boolean => {
     if (item.type === "group" && intent.kind === "into" && item.id === intent.groupId) {
@@ -308,13 +311,6 @@ export function ServerListWidget({
 
     return (
       <>
-        <span
-          className={cn(
-            "h-2 w-2 shrink-0 rounded-full",
-            sessionStatusClass(status),
-          )}
-          title={status ? t(`session.${status}`) : undefined}
-        />
         <Server className="h-3.5 w-3.5 shrink-0 text-[var(--color-muted-foreground)]" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 truncate">
@@ -329,6 +325,13 @@ export function ServerListWidget({
             {node.username}@{node.host}:{node.port}
           </div>
         </div>
+        <span
+          className={cn(
+            "ml-auto h-2 w-2 shrink-0 rounded-full",
+            sessionStatusClass(status),
+          )}
+          title={status ? t(`session.${status}`) : undefined}
+        />
       </>
     );
   };
