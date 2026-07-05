@@ -51,6 +51,7 @@ export function AddQuickCommandDialog({
     const current = parseQuickCommandsConfig(configJson);
     onAdded(
       serializeQuickCommandsConfig({
+        ...current,
         customCommands: [
           ...current.customCommands,
           { id: crypto.randomUUID(), label: nextLabel, command: nextCommand },

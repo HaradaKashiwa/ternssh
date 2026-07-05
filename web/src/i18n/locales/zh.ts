@@ -264,7 +264,11 @@ export const zh = {
   },
   quickCommands: {
     hint: "点击命令将在当前选中的服务器终端中执行。",
+    hintAll: "点击命令将在所有已连接的终端中执行。",
+    targetCurrent: "当前会话",
+    targetAll: "全部会话",
     noServer: "未选择服务器",
+    noAliveSessions: "没有已连接的终端会话",
     terminalStatus: "终端状态：{status}",
     myCommands: "我的命令",
     deleteTitle: "删除",

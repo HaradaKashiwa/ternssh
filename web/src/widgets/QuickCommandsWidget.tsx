@@ -84,7 +84,7 @@ const PRESET_GROUPS: PresetCommandGroup[] = [
 ];
 
 function sessionStatusLabel(
-  t: (key: string) => string,
+  t: (key: string, params?: Record<string, string | number>) => string,
   status: ServerSession["status"] | undefined,
 ): string {
   if (!status) return t("common.idle");
@@ -98,26 +98,64 @@ export function QuickCommandsWidget({
   onConfigChange,
 }: QuickCommandsWidgetProps) {
   const t = useT();
-  const session = activeServerId ? sessions[activeServerId] : null;
-  const alive = session ? isSessionAlive(session.status) : false;
-  const customCommands = useMemo(
-    () => parseQuickCommandsConfig(configJson).customCommands,
+  const config = useMemo(
+    () => parseQuickCommandsConfig(configJson),
     [configJson],
   );
+  const targetMode = config.targetMode ?? "current";
+  const session = activeServerId ? sessions[activeServerId] : null;
+  const alive = session ? isSessionAlive(session.status) : false;
+  const aliveSessionIds = useMemo(
+    () =>
+      Object.entries(sessions)
+        .filter(([, item]) => isSessionAlive(item.status))
+        .map(([id]) => id),
+    [sessions],
+  );
+  const canRun =
+    targetMode === "all" ? aliveSessionIds.length > 0 : Boolean(activeServerId && alive);
+  const customCommands = config.customCommands;
   const [lastRunKey, setLastRunKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const saveCustomCommands = useCallback(
     (next: QuickCommandItem[]) => {
       onConfigChange(
-        serializeQuickCommandsConfig({ customCommands: next }),
+        serializeQuickCommandsConfig({
+          ...config,
+          customCommands: next,
+        }),
       );
     },
-    [onConfigChange],
+    [config, onConfigChange],
   );
 
   const handleRun = useCallback(
     (key: string, command: string) => {
+      if (targetMode === "all") {
+        if (aliveSessionIds.length === 0) {
+          setError(t("quickCommands.noAliveSessions"));
+          return;
+        }
+
+        let sent = 0;
+        for (const serverId of aliveSessionIds) {
+          if (runTerminalCommand(serverId, command)) {
+            sent += 1;
+          }
+        }
+
+        if (sent === 0) {
+          setError(t("quickCommands.sendFailed"));
+          return;
+        }
+
+        setError(null);
+        setLastRunKey(key);
+        window.setTimeout(() => setLastRunKey(null), 1200);
+        return;
+      }
+
       if (!activeServerId) {
         setError(t("quickCommands.selectServerFirst"));
         return;
@@ -141,7 +179,7 @@ export function QuickCommandsWidget({
       setLastRunKey(key);
       window.setTimeout(() => setLastRunKey(null), 1200);
     },
-    [activeServerId, alive, session?.status, t],
+    [activeServerId, alive, aliveSessionIds, session?.status, t, targetMode],
   );
 
   const handleDelete = useCallback(
@@ -160,7 +198,11 @@ export function QuickCommandsWidget({
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3">
       <div className="flex items-start gap-2 text-[11px] text-[var(--color-muted-foreground)]">
         <Terminal className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        <p>{t("quickCommands.hint")}</p>
+        <p>
+          {targetMode === "all"
+            ? t("quickCommands.hintAll")
+            : t("quickCommands.hint")}
+        </p>
       </div>
 
       {error && (
@@ -169,17 +211,23 @@ export function QuickCommandsWidget({
         </p>
       )}
 
-      {!activeServerId && (
+      {targetMode === "current" && !activeServerId && (
         <p className="text-sm text-[var(--color-muted-foreground)]">
           {t("quickCommands.noServer")}
         </p>
       )}
 
-      {activeServerId && !alive && (
+      {targetMode === "current" && activeServerId && !alive && (
         <p className="text-sm text-[var(--color-muted-foreground)]">
           {t("quickCommands.terminalStatus", {
             status: sessionStatusLabel(t, session?.status),
           })}
+        </p>
+      )}
+
+      {targetMode === "all" && aliveSessionIds.length === 0 && (
+        <p className="text-sm text-[var(--color-muted-foreground)]">
+          {t("quickCommands.noAliveSessions")}
         </p>
       )}
 
@@ -198,7 +246,7 @@ export function QuickCommandsWidget({
                     lastRunKey === item.id &&
                       "ring-1 ring-[var(--color-primary)]",
                   )}
-                  disabled={!alive}
+                  disabled={!canRun}
                   size="sm"
                   title={item.command}
                   variant="secondary"
@@ -243,7 +291,7 @@ export function QuickCommandsWidget({
                       lastRunKey === key &&
                         "ring-1 ring-[var(--color-primary)]",
                     )}
-                    disabled={!alive}
+                    disabled={!canRun}
                     size="sm"
                     variant="secondary"
                     onClick={() => handleRun(key, command.command)}

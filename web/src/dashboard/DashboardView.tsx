@@ -32,6 +32,11 @@ import { AddWidgetMenu } from "./AddWidgetMenu";
 import { GridDashboard } from "./GridDashboard";
 import { findWidgetPlacement, layoutsEqual, type GridItem } from "./grid-utils";
 import { collectAllGroupIds, findServerInTree } from "@/lib/server-tree";
+import {
+  parseQuickCommandsConfig,
+  serializeQuickCommandsConfig,
+  type QuickCommandTargetMode,
+} from "@/lib/quick-commands-config";
 import { ADDABLE_WIDGETS, widgetTitleKey } from "./widgets";
 
 const DEFAULT_GRID_ITEM = {
@@ -713,8 +718,30 @@ export function DashboardView() {
           }
 
           if (widget.type === "quick_commands") {
+            const quickConfig = parseQuickCommandsConfig(widget.config_json);
+            const targetMode = quickConfig.targetMode ?? "current";
+
             return (
               <div className="widget-no-drag flex items-center gap-1">
+                <select
+                  className="widget-no-drag h-8 max-w-[7.5rem] bg-[var(--color-secondary)] px-2 text-xs"
+                  value={targetMode}
+                  onChange={(event) => {
+                    handleWidgetConfigChange(
+                      widget.id,
+                      serializeQuickCommandsConfig({
+                        ...quickConfig,
+                        targetMode: event.target
+                          .value as QuickCommandTargetMode,
+                      }),
+                    );
+                  }}
+                >
+                  <option value="current">
+                    {t("quickCommands.targetCurrent")}
+                  </option>
+                  <option value="all">{t("quickCommands.targetAll")}</option>
+                </select>
                 <Button
                   className="widget-no-drag"
                   size="sm"

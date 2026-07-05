@@ -270,7 +270,11 @@ export const en: Messages = {
   },
   quickCommands: {
     hint: "Commands run in the selected server's terminal.",
+    hintAll: "Commands run in all connected terminals.",
+    targetCurrent: "Current session",
+    targetAll: "All sessions",
     noServer: "No server selected",
+    noAliveSessions: "No connected terminal sessions",
     terminalStatus: "Terminal: {status}",
     myCommands: "My commands",
     deleteTitle: "Delete",

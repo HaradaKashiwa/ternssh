@@ -4,11 +4,17 @@ export interface QuickCommandItem {
   command: string;
 }
 
+export type QuickCommandTargetMode = "current" | "all";
+
 export interface QuickCommandsWidgetConfig {
   customCommands: QuickCommandItem[];
+  targetMode?: QuickCommandTargetMode;
 }
 
-const EMPTY_CONFIG: QuickCommandsWidgetConfig = { customCommands: [] };
+const EMPTY_CONFIG: QuickCommandsWidgetConfig = {
+  customCommands: [],
+  targetMode: "current",
+};
 
 export function parseQuickCommandsConfig(
   configJson: string | null | undefined,
@@ -16,7 +22,12 @@ export function parseQuickCommandsConfig(
   if (!configJson) return EMPTY_CONFIG;
   try {
     const parsed = JSON.parse(configJson) as Partial<QuickCommandsWidgetConfig>;
-    if (!Array.isArray(parsed.customCommands)) return EMPTY_CONFIG;
+    if (!Array.isArray(parsed.customCommands)) {
+      return {
+        customCommands: [],
+        targetMode: parsed.targetMode === "all" ? "all" : "current",
+      };
+    }
     const customCommands = parsed.customCommands
       .filter(
         (item): item is QuickCommandItem =>
@@ -33,7 +44,10 @@ export function parseQuickCommandsConfig(
         label: item.label.trim(),
         command: item.command.replace(/\r\n/g, "\n").trim(),
       }));
-    return { customCommands };
+    return {
+      customCommands,
+      targetMode: parsed.targetMode === "all" ? "all" : "current",
+    };
   } catch {
     return EMPTY_CONFIG;
   }
