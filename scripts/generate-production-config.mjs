@@ -147,16 +147,21 @@ function patchWranglerJsonc(ids) {
     throw new Error("wrangler.jsonc is missing d1_databases configuration.");
   }
 
-  const updated = content.replace(
+  const currentIdMatch = content.match(/"database_id"\s*:\s*"([^"]*)"/);
+  const currentId = currentIdMatch?.[1];
+
+  if (currentId === ids.d1) {
+    return;
+  }
+
+  if (!currentIdMatch) {
+    throw new Error("wrangler.jsonc is missing database_id in d1_databases.");
+  }
+
+  content = content.replace(
     /"database_id"\s*:\s*"[^"]*"/,
     `"database_id": "${ids.d1}"`,
   );
-
-  if (updated === content) {
-    throw new Error("Failed to update database_id in wrangler.jsonc.");
-  }
-
-  content = updated;
 
   if (ids.account) {
     if (/^\s*"account_id"/m.test(content)) {
@@ -215,4 +220,8 @@ if (!ids) {
 writeProductionFile(ids);
 patchWranglerJsonc(ids);
 console.log(`Wrote ${path.relative(root, productionPath)}`);
-console.log(`Applied production D1 binding (${ids.d1}) to wrangler.jsonc for deploy.`);
+if (readIdsFromFile(basePath)?.d1 === ids.d1) {
+  console.log(`Production D1 binding (${ids.d1}) ready.`);
+} else {
+  console.log(`Applied production D1 binding (${ids.d1}) to wrangler.jsonc for deploy.`);
+}
