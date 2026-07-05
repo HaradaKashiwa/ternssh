@@ -5,9 +5,12 @@ import {
   Folder,
   FolderOpen,
   GripVertical,
+  Search,
   Server,
+  X,
 } from "lucide-react";
 import { ContextMenu, type ContextMenuItem } from "@/components/ContextMenu";
+import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 import type { TreeNode } from "@/lib/api";
@@ -18,6 +21,7 @@ import {
   countGroupChildren,
   countTreeNodes,
   DRAG_MIME,
+  filterTreeBySearch,
   flattenTree,
   isGroupDescendant,
   readDragItem,
@@ -57,6 +61,7 @@ export function ServerListWidget({
   onExpandedChange,
 }: ServerListWidgetProps) {
   const t = useT();
+  const [searchQuery, setSearchQuery] = useState("");
   const [dragItem, setDragItem] = useState<DragItem | null>(null);
   const [dropIntent, setDropIntent] = useState<DropIntent | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
@@ -78,9 +83,22 @@ export function ServerListWidget({
     });
   }, [context.activeServerId, tree]);
 
+  const trimmedSearch = searchQuery.trim();
+  const isSearching = trimmedSearch.length > 0;
+
+  const displayTree = useMemo(
+    () => (isSearching ? filterTreeBySearch(tree, trimmedSearch) : tree),
+    [isSearching, tree, trimmedSearch],
+  );
+
+  const displayExpanded = useMemo(() => {
+    if (!isSearching) return expanded;
+    return new Set(collectAllGroupIds(displayTree));
+  }, [displayTree, expanded, isSearching]);
+
   const rows = useMemo(
-    () => flattenTree(tree, expanded),
-    [tree, expanded],
+    () => flattenTree(displayTree, displayExpanded),
+    [displayTree, displayExpanded],
   );
   const counts = useMemo(() => countTreeNodes(tree), [tree]);
 
@@ -339,15 +357,40 @@ export function ServerListWidget({
   return (
     <>
       <div
-        className="widget-no-drag flex h-full flex-col overflow-auto p-2"
+        className="widget-no-drag flex h-full flex-col overflow-hidden p-2"
         onContextMenu={(event) => openContextMenu(event, { kind: "root" })}
-        onDragOver={handleRootDragOver}
-        onDrop={(event) => {
-          if (dropIntent?.kind === "before" && dropIntent.parentId === null) {
-            void handleDrop(event, dropIntent);
-          }
-        }}
+        onDragOver={isSearching ? undefined : handleRootDragOver}
+        onDrop={
+          isSearching
+            ? undefined
+            : (event) => {
+                if (dropIntent?.kind === "before" && dropIntent.parentId === null) {
+                  void handleDrop(event, dropIntent);
+                }
+              }
+        }
       >
+        <div className="relative mb-2 shrink-0">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
+          <Input
+            className="h-8 pl-8 pr-8 text-xs"
+            value={searchQuery}
+            placeholder={t("serverList.searchPlaceholder")}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="absolute right-1 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+              aria-label={t("serverList.clearSearch")}
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto">
         {loading && (
           <p className="px-2 py-1 text-sm text-[var(--color-muted-foreground)]">
             {t("serverList.loading")}
@@ -358,17 +401,22 @@ export function ServerListWidget({
             {t("serverList.empty")}
           </p>
         )}
-        {moving && (
+        {!loading && isSearching && rows.length === 0 && counts.servers > 0 && (
+          <p className="px-2 py-1 text-sm text-[var(--color-muted-foreground)]">
+            {t("serverList.noSearchResults")}
+          </p>
+        )}
+        {moving && !isSearching && (
           <p className="mb-1 px-2 text-xs text-[var(--color-muted-foreground)]">
             {t("serverList.moving")}
           </p>
         )}
 
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0">
           {rows.map((row) => {
             const { node, depth, parentId, index } = row;
             const isGroup = node.type === "group";
-            const isOpen = isGroup && expanded.has(node.id);
+            const isOpen = isGroup && displayExpanded.has(node.id);
             const isActive = !isGroup && context.activeServerId === node.id;
             const session = !isGroup ? context.sessions[node.id] : undefined;
             const connected = isSessionAlive(session?.status);
@@ -395,16 +443,24 @@ export function ServerListWidget({
                     "relative h-0.5 transition-colors",
                     showBeforeDrop && "bg-[var(--color-primary)]",
                   )}
-                  onDragOver={(event) => {
-                    if (!event.dataTransfer.types.includes(DRAG_MIME)) return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    const item = dragItem ?? readDragItem(event.dataTransfer);
-                    if (!item || !canDrop(item, beforeIntent)) return;
-                    event.dataTransfer.dropEffect = "move";
-                    setDropIntent(beforeIntent);
-                  }}
-                  onDrop={(event) => void handleDrop(event, beforeIntent)}
+                  onDragOver={
+                    isSearching
+                      ? undefined
+                      : (event) => {
+                          if (!event.dataTransfer.types.includes(DRAG_MIME)) return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          const item = dragItem ?? readDragItem(event.dataTransfer);
+                          if (!item || !canDrop(item, beforeIntent)) return;
+                          event.dataTransfer.dropEffect = "move";
+                          setDropIntent(beforeIntent);
+                        }
+                  }
+                  onDrop={
+                    isSearching
+                      ? undefined
+                      : (event) => void handleDrop(event, beforeIntent)
+                  }
                 />
 
                 <div
@@ -429,29 +485,38 @@ export function ServerListWidget({
                     )
                   }
                   onDragOver={
-                    isGroup
-                      ? (event) => {
-                          if (!event.dataTransfer.types.includes(DRAG_MIME)) return;
-                          event.preventDefault();
-                          event.stopPropagation();
-                          const item =
-                            dragItem ?? readDragItem(event.dataTransfer);
-                          if (!item || !canDrop(item, intoIntent)) return;
-                          event.dataTransfer.dropEffect = "move";
-                          setDropIntent(intoIntent);
-                        }
-                      : undefined
+                    isSearching
+                      ? undefined
+                      : isGroup
+                        ? (event) => {
+                            if (!event.dataTransfer.types.includes(DRAG_MIME)) return;
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const item =
+                              dragItem ?? readDragItem(event.dataTransfer);
+                            if (!item || !canDrop(item, intoIntent)) return;
+                            event.dataTransfer.dropEffect = "move";
+                            setDropIntent(intoIntent);
+                          }
+                        : undefined
                   }
                   onDrop={
-                    isGroup
-                      ? (event) => void handleDrop(event, intoIntent)
-                      : undefined
+                    isSearching
+                      ? undefined
+                      : isGroup
+                        ? (event) => void handleDrop(event, intoIntent)
+                        : undefined
                   }
                 >
                   <button
                     type="button"
-                    className="widget-no-drag inline-flex h-6 w-5 shrink-0 cursor-grab items-center justify-center text-[var(--color-muted-foreground)] opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
-                    draggable
+                    className={cn(
+                      "widget-no-drag inline-flex h-6 w-5 shrink-0 items-center justify-center text-[var(--color-muted-foreground)]",
+                      isSearching
+                        ? "invisible"
+                        : "cursor-grab opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing",
+                    )}
+                    draggable={!isSearching}
                     onDragStart={(event) =>
                       handleDragStart(event, {
                         type: isGroup ? "group" : "server",
@@ -460,6 +525,8 @@ export function ServerListWidget({
                     }
                     onDragEnd={handleDragEnd}
                     aria-label={t("serverList.dragSort")}
+                    aria-hidden={isSearching}
+                    tabIndex={isSearching ? -1 : 0}
                   >
                     <GripVertical className="h-3.5 w-3.5" />
                   </button>
@@ -502,7 +569,7 @@ export function ServerListWidget({
             );
           })}
 
-          {dragItem && (
+          {dragItem && !isSearching && (
             <div
               className={cn(
                 "mt-1 h-7 text-center text-xs leading-7 text-[var(--color-muted-foreground)]",
@@ -524,6 +591,7 @@ export function ServerListWidget({
               {t("serverList.dropToRoot")}
             </div>
           )}
+        </div>
         </div>
       </div>
 

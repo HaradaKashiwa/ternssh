@@ -116,6 +116,9 @@ export const en: Messages = {
     delete: "Delete",
     dragSort: "Drag to reorder",
     dropToRoot: "Drop here to move to root",
+    searchPlaceholder: "Search servers, hosts, groups…",
+    clearSearch: "Clear search",
+    noSearchResults: "No matching servers",
   },
   addServer: {
     title: "Add server",

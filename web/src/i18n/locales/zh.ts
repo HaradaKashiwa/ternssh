@@ -112,6 +112,9 @@ export const zh = {
     delete: "删除",
     dragSort: "拖拽排序",
     dropToRoot: "拖到此处移至根目录",
+    searchPlaceholder: "搜索服务器、主机、分组…",
+    clearSearch: "清除搜索",
+    noSearchResults: "没有匹配的服务器",
   },
   addServer: {
     title: "添加服务器",

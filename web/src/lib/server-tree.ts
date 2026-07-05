@@ -26,6 +26,53 @@ export function flattenTree(
   return rows;
 }
 
+export function nodeMatchesSearchQuery(node: TreeNode, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+
+  if (node.type === "group") {
+    return node.name.toLowerCase().includes(q);
+  }
+
+  const endpoint = `${node.username}@${node.host}:${node.port}`.toLowerCase();
+  return (
+    node.name.toLowerCase().includes(q) ||
+    node.host.toLowerCase().includes(q) ||
+    node.username.toLowerCase().includes(q) ||
+    endpoint.includes(q) ||
+    String(node.port).includes(q)
+  );
+}
+
+export function filterTreeBySearch(nodes: TreeNode[], query: string): TreeNode[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return nodes;
+
+  const filter = (items: TreeNode[]): TreeNode[] => {
+    const result: TreeNode[] = [];
+
+    for (const node of items) {
+      if (node.type === "group") {
+        if (nodeMatchesSearchQuery(node, q)) {
+          result.push(node);
+          continue;
+        }
+
+        const children = filter(node.children);
+        if (children.length > 0) {
+          result.push({ ...node, children });
+        }
+      } else if (nodeMatchesSearchQuery(node, q)) {
+        result.push(node);
+      }
+    }
+
+    return result;
+  };
+
+  return filter(nodes);
+}
+
 export function countTreeNodes(nodes: TreeNode[]): {
   servers: number;
   groups: number;
