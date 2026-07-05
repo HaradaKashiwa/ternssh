@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FolderPlus, ChevronsDown, ChevronsUp, Plus, Settings, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { api, type Dashboard, type MeResponse, type TreeNode } from "@/lib/api";
+import { api, type Dashboard, type MeResponse, type Server, type TreeNode } from "@/lib/api";
 import {
   isSessionAlive,
   MAX_SESSION_RECONNECT_ATTEMPTS,
@@ -24,12 +24,13 @@ import { TerminalWidget } from "@/widgets/TerminalWidget";
 import { AddGroupDialog } from "./AddGroupDialog";
 import { AddQuickCommandDialog } from "./AddQuickCommandDialog";
 import { AddServerDialog } from "./AddServerDialog";
+import { CopyServerDialog } from "./CopyServerDialog";
 import { RenameGroupDialog } from "./RenameGroupDialog";
 import { StatusSettingsDialog } from "./StatusSettingsDialog";
 import { AddWidgetMenu } from "./AddWidgetMenu";
 import { GridDashboard } from "./GridDashboard";
 import { findWidgetPlacement, layoutsEqual, type GridItem } from "./grid-utils";
-import { collectAllGroupIds } from "@/lib/server-tree";
+import { collectAllGroupIds, findServerInTree } from "@/lib/server-tree";
 import { ADDABLE_WIDGETS, widgetTitleKey } from "./widgets";
 
 const DEFAULT_GRID_ITEM = {
@@ -89,6 +90,8 @@ export function DashboardView() {
   sessionsRef.current = sessions;
   const [addOpen, setAddOpen] = useState(false);
   const [addGroupId, setAddGroupId] = useState<string | null>(null);
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [copySource, setCopySource] = useState<Server | null>(null);
   const [groupOpen, setGroupOpen] = useState(false);
   const [groupParentId, setGroupParentId] = useState<string | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -762,6 +765,12 @@ export function DashboardView() {
                   setRenameGroupName(name);
                   setRenameOpen(true);
                 }}
+                onCopyServer={(serverId) => {
+                  const source = findServerInTree(tree, serverId);
+                  if (!source) return;
+                  setCopySource(source);
+                  setCopyOpen(true);
+                }}
               />
             );
           }
@@ -855,6 +864,16 @@ export function DashboardView() {
           setAddGroupId(null);
           await load();
         }}
+      />
+
+      <CopyServerDialog
+        open={copyOpen}
+        onOpenChange={(open) => {
+          setCopyOpen(open);
+          if (!open) setCopySource(null);
+        }}
+        source={copySource}
+        onCopied={load}
       />
 
       <AddGroupDialog

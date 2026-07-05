@@ -73,6 +73,22 @@ export function filterTreeBySearch(nodes: TreeNode[], query: string): TreeNode[]
   return filter(nodes);
 }
 
+export function findServerInTree(
+  nodes: TreeNode[],
+  serverId: string,
+): Extract<TreeNode, { type: "server" }> | null {
+  for (const node of nodes) {
+    if (node.type === "server" && node.id === serverId) {
+      return node;
+    }
+    if (node.type === "group") {
+      const found = findServerInTree(node.children, serverId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 export function countTreeNodes(nodes: TreeNode[]): {
   servers: number;
   groups: number;

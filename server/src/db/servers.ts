@@ -359,6 +359,44 @@ export async function updateServer(
   return server ? toPublic(server) : null;
 }
 
+export async function copyServer(
+  db: D1Database,
+  userId: string,
+  sourceId: string,
+  input: {
+    name: string;
+    host: string;
+    port: number;
+    username: string;
+    auth_type: "password" | "private_key";
+    group_id?: string | null;
+    credential?: string;
+  },
+): Promise<ServerPublic> {
+  const source = await getServer(db, userId, sourceId);
+  if (!source) throw new Error("server not found");
+
+  let credential = input.credential?.trim();
+  if (!credential) {
+    credential =
+      (await getCredentialValue(db, userId, source.credential_ref)) ?? "";
+    if (!credential) throw new Error("source credential not found");
+  }
+
+  const groupId =
+    input.group_id !== undefined ? input.group_id : source.group_id;
+
+  return createServer(db, userId, {
+    name: input.name,
+    host: input.host,
+    port: input.port,
+    username: input.username,
+    auth_type: input.auth_type,
+    credential,
+    group_id: groupId,
+  });
+}
+
 export async function deleteServer(
   db: D1Database,
   userId: string,

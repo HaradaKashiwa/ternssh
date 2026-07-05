@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import {
   createGroup,
   createServer,
+  copyServer,
   deleteGroup,
   deleteServer,
   getServerTree,
@@ -158,6 +159,51 @@ serverRoutes.post("/", async (c) => {
       c,
       400,
       error instanceof Error ? error.message : "failed to create server",
+    );
+  }
+});
+
+serverRoutes.post("/:id/copy", async (c) => {
+  const user = c.get("user");
+  const sourceId = c.req.param("id");
+  const body = await c.req.json<{
+    name?: string;
+    host?: string;
+    port?: number;
+    username?: string;
+    auth_type?: "password" | "private_key";
+    credential?: string;
+    group_id?: string | null;
+  }>();
+
+  if (!body.name?.trim()) return jsonError(c, 400, "name is required");
+  if (!body.host?.trim()) return jsonError(c, 400, "host is required");
+  if (!body.username?.trim()) return jsonError(c, 400, "username is required");
+  if (body.auth_type !== "password" && body.auth_type !== "private_key") {
+    return jsonError(c, 400, "auth_type must be password or private_key");
+  }
+
+  const port = body.port ?? 22;
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    return jsonError(c, 400, "port must be between 1 and 65535");
+  }
+
+  try {
+    const server = await copyServer(c.env.DB, user.id, sourceId, {
+      name: body.name.trim(),
+      host: body.host.trim(),
+      port,
+      username: body.username.trim(),
+      auth_type: body.auth_type,
+      credential: body.credential?.trim() || undefined,
+      group_id: body.group_id ?? null,
+    });
+    return c.json({ server }, 201);
+  } catch (error) {
+    return jsonError(
+      c,
+      400,
+      error instanceof Error ? error.message : "failed to copy server",
     );
   }
 });

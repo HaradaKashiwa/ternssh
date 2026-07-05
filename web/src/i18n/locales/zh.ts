@@ -114,6 +114,7 @@ export const zh = {
     connect: "连接",
     select: "选择",
     delete: "删除",
+    copy: "复制",
     dragSort: "拖拽排序",
     dropToRoot: "拖到此处移至根目录",
     searchPlaceholder: "搜索服务器、主机、分组…",
@@ -130,6 +131,13 @@ export const zh = {
     privateKey: "私钥",
     privateKeyContent: "私钥内容",
     createFailed: "创建失败",
+  },
+  copyServer: {
+    title: "复制服务器",
+    nameSuffix: " 副本",
+    credentialHint: "留空则沿用原服务器的密码或私钥",
+    credentialPlaceholder: "留空沿用原凭据",
+    createFailed: "复制失败",
   },
   addGroup: {
     title: "新建分组",

@@ -82,6 +82,16 @@ export interface CreateServerInput {
   group_id?: string | null;
 }
 
+export interface CopyServerInput {
+  name: string;
+  host: string;
+  port: number;
+  username: string;
+  auth_type: "password" | "private_key";
+  credential?: string;
+  group_id?: string | null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -107,6 +117,11 @@ export const api = {
   listServers: () => request<{ tree: TreeNode[] }>("/api/v1/servers"),
   createServer: (input: CreateServerInput) =>
     request<{ server: Server }>("/api/v1/servers", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  copyServer: (sourceId: string, input: CopyServerInput) =>
+    request<{ server: Server }>(`/api/v1/servers/${sourceId}/copy`, {
       method: "POST",
       body: JSON.stringify(input),
     }),

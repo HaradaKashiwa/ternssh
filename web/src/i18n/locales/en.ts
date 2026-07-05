@@ -120,6 +120,7 @@ export const en: Messages = {
     connect: "Connect",
     select: "Select",
     delete: "Delete",
+    copy: "Duplicate",
     dragSort: "Drag to reorder",
     dropToRoot: "Drop here to move to root",
     searchPlaceholder: "Search servers, hosts, groups…",
@@ -136,6 +137,13 @@ export const en: Messages = {
     privateKey: "Private key",
     privateKeyContent: "Private key content",
     createFailed: "Failed to create",
+  },
+  copyServer: {
+    title: "Duplicate server",
+    nameSuffix: " (copy)",
+    credentialHint: "Leave blank to reuse the source server's password or key",
+    credentialPlaceholder: "Leave blank to reuse",
+    createFailed: "Failed to duplicate",
   },
   addGroup: {
     title: "New group",
