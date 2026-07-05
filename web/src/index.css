@@ -226,7 +226,7 @@ html[data-has-background="true"] .grid-dashboard-host {
   align-items: center;
   gap: 8px;
   height: 32px;
-  padding: 0 10px;
+  padding: 0;
   background: color-mix(
     in oklch,
     var(--color-secondary) calc(var(--widget-opacity, 1) * 85%),
