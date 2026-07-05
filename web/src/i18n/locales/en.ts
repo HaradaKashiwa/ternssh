@@ -61,6 +61,20 @@ export const en: Messages = {
     terminalColorForeground: "Text",
     terminalColorCursor: "Cursor",
   },
+  settings: {
+    resetAllTitle: "Reset all settings",
+    resetAllHint:
+      "Restore local preferences and wipe all database data: servers, credentials, sessions, and dashboard layout.",
+    resetAllAction: "Reset all settings",
+    resetAllContinue: "Continue",
+    resetAllConfirm1:
+      "Reset all settings? Language, theme, background, widget styling, terminal history, all servers, credentials, and dashboard layout will be cleared.",
+    resetAllConfirm2:
+      "This cannot be undone. Confirm again to wipe all data and reset settings.",
+    resetAllFinalAction: "Confirm reset",
+    resetAllResetting: "Resetting…",
+    resetAllFailed: "Failed to reset settings",
+  },
   widget: {
     server_list: "Servers",
     terminal: "Terminal",

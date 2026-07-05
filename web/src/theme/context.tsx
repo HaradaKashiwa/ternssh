@@ -15,17 +15,21 @@ import {
   getStoredBackgroundImage,
   getStoredGridMargin,
   getStoredWidgetOpacity,
+  GRID_MARGIN_DEFAULT,
   GRID_MARGIN_STORAGE_KEY,
+  WIDGET_OPACITY_DEFAULT,
   WIDGET_OPACITY_STORAGE_KEY,
 } from "./personalization";
 import {
   applyTheme,
+  DEFAULT_THEME_MODE,
   getStoredThemeMode,
   THEME_STORAGE_KEY,
   type ResolvedTheme,
   type ThemeMode,
 } from "./theme";
 import {
+  createDefaultTerminalThemeConfig,
   getAppThemeTerminalColors,
   getStoredTerminalThemeConfig,
   resolveTerminalXtermTheme,
@@ -54,6 +58,7 @@ interface PersonalizationContextValue {
     value: string,
   ) => void;
   resetTerminalThemeCustom: () => void;
+  resetPersonalization: () => void;
 }
 
 const PersonalizationContext = createContext<PersonalizationContextValue | null>(
@@ -164,6 +169,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     persistTerminalTheme(nextConfig);
   }, [resolvedTheme]);
 
+  const resetPersonalization = useCallback(() => {
+    const defaultMode = DEFAULT_THEME_MODE;
+    setModeState(defaultMode);
+    localStorage.setItem(THEME_STORAGE_KEY, defaultMode);
+    const resolved = applyTheme(defaultMode);
+    setResolvedTheme(resolved);
+
+    setBackgroundImageState(null);
+    localStorage.removeItem(BACKGROUND_STORAGE_KEY);
+    applyBackgroundImage(null);
+
+    const opacity = applyWidgetOpacity(WIDGET_OPACITY_DEFAULT);
+    setWidgetOpacityState(opacity);
+    localStorage.setItem(WIDGET_OPACITY_STORAGE_KEY, String(opacity));
+
+    const margin = applyGridMargin(GRID_MARGIN_DEFAULT);
+    setGridMarginState(margin);
+    localStorage.setItem(GRID_MARGIN_STORAGE_KEY, String(margin));
+
+    const nextTerminal = createDefaultTerminalThemeConfig();
+    setTerminalThemeState(nextTerminal);
+    persistTerminalTheme(nextTerminal);
+  }, []);
+
   useEffect(() => {
     if (mode !== "system") return;
 
@@ -192,6 +221,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setTerminalThemeMode,
       setTerminalThemeColor,
       resetTerminalThemeCustom,
+      resetPersonalization,
     }),
     [
       mode,
@@ -208,6 +238,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setTerminalThemeMode,
       setTerminalThemeColor,
       resetTerminalThemeCustom,
+      resetPersonalization,
     ],
   );
 

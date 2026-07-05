@@ -2,6 +2,7 @@ export type ThemeMode = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
 
 export const THEME_STORAGE_KEY = "ternssh-theme";
+export const DEFAULT_THEME_MODE: ThemeMode = "system";
 
 export interface ThemeOption {
   id: ThemeMode;
@@ -30,7 +31,7 @@ export function getStoredThemeMode(): ThemeMode {
   if (stored === "light" || stored === "dark" || stored === "system") {
     return stored;
   }
-  return "dark";
+  return DEFAULT_THEME_MODE;
 }
 
 export function applyTheme(mode: ThemeMode): ResolvedTheme {

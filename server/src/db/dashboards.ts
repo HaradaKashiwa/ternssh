@@ -6,6 +6,40 @@ export interface DashboardWithWidgets {
   widgets: DashboardWidgetRecord[];
 }
 
+export const DEFAULT_DASHBOARD_WIDGETS: Array<{
+  type: string;
+  grid_x: number;
+  grid_y: number;
+  grid_w: number;
+  grid_h: number;
+  config_json: string | null;
+}> = [
+  {
+    type: "server_list",
+    grid_x: 0,
+    grid_y: 0,
+    grid_w: 3,
+    grid_h: 8,
+    config_json: null,
+  },
+  {
+    type: "terminal",
+    grid_x: 3,
+    grid_y: 0,
+    grid_w: 6,
+    grid_h: 8,
+    config_json: null,
+  },
+  {
+    type: "file_manager",
+    grid_x: 9,
+    grid_y: 0,
+    grid_w: 3,
+    grid_h: 8,
+    config_json: null,
+  },
+];
+
 export async function getDefaultDashboard(
   db: D1Database,
   userId: string,
@@ -40,39 +74,7 @@ export async function ensureDefaultDashboard(
 
   const dashboardId = newId();
   const defaultLayout = JSON.stringify([]);
-  const defaultWidgets: Array<{
-    type: string;
-    grid_x: number;
-    grid_y: number;
-    grid_w: number;
-    grid_h: number;
-    config_json: string | null;
-  }> = [
-    {
-      type: "server_list",
-      grid_x: 0,
-      grid_y: 0,
-      grid_w: 3,
-      grid_h: 8,
-      config_json: null,
-    },
-    {
-      type: "terminal",
-      grid_x: 3,
-      grid_y: 0,
-      grid_w: 6,
-      grid_h: 8,
-      config_json: null,
-    },
-    {
-      type: "file_manager",
-      grid_x: 9,
-      grid_y: 0,
-      grid_w: 3,
-      grid_h: 8,
-      config_json: null,
-    },
-  ];
+  const defaultWidgets = DEFAULT_DASHBOARD_WIDGETS;
 
   const statements: D1PreparedStatement[] = [
     db
@@ -186,4 +188,17 @@ export async function updateDashboard(
   const updated = await getDefaultDashboard(db, userId);
   if (!updated) throw new Error("Failed to update dashboard");
   return updated;
+}
+
+export async function resetDefaultDashboard(
+  db: D1Database,
+  userId: string,
+): Promise<DashboardWithWidgets> {
+  return updateDashboard(db, userId, {
+    layout_json: JSON.stringify([]),
+    widgets: DEFAULT_DASHBOARD_WIDGETS.map((widget) => ({
+      ...widget,
+      id: newId(),
+    })),
+  });
 }

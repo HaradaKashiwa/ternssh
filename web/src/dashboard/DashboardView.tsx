@@ -39,6 +39,7 @@ import {
   serializeQuickCommandsConfig,
   type QuickCommandTargetMode,
 } from "@/lib/quick-commands-config";
+import { SETTINGS_RESET_EVENT } from "@/lib/app-settings";
 import { ADDABLE_WIDGETS, widgetTitleKey } from "./widgets";
 
 const DEFAULT_GRID_ITEM = {
@@ -167,6 +168,24 @@ export function DashboardView() {
   useEffect(() => {
     void load();
   }, [load, t]);
+
+  useEffect(() => {
+    const onSettingsReset = () => {
+      for (const timer of reconnectTimerRef.current.values()) {
+        window.clearTimeout(timer);
+      }
+      reconnectTimerRef.current.clear();
+      reconnectAttemptRef.current.clear();
+      manualDisconnectServersRef.current.clear();
+      manualCloseSessionsRef.current.clear();
+      setSessions({});
+      setActiveServerId(null);
+      setActiveSessionId(null);
+      void load();
+    };
+    window.addEventListener(SETTINGS_RESET_EVENT, onSettingsReset);
+    return () => window.removeEventListener(SETTINGS_RESET_EVENT, onSettingsReset);
+  }, [load]);
 
   useEffect(() => {
     return () => {

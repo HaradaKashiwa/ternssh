@@ -222,6 +222,10 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+  resetDashboard: () =>
+    request<Dashboard>("/api/v1/me/reset", {
+      method: "POST",
+    }).then((response) => response.dashboard),
   createSession: (serverId: string) =>
     request<{
       sessionId: string;

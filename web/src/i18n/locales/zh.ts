@@ -56,6 +56,19 @@ export const zh = {
     terminalColorForeground: "文字",
     terminalColorCursor: "光标",
   },
+  settings: {
+    resetAllTitle: "还原所有设置",
+    resetAllHint:
+      "将本地偏好与数据库中的服务器、凭据、会话、仪表盘布局等全部恢复为初始状态。",
+    resetAllAction: "还原所有设置",
+    resetAllContinue: "继续",
+    resetAllConfirm1:
+      "确定要还原所有设置吗？语言、主题、背景、组件样式、终端历史，以及所有服务器、凭据和仪表盘布局都将被清除。",
+    resetAllConfirm2: "此操作无法撤销。请再次确认以清空所有数据并还原设置。",
+    resetAllFinalAction: "确认还原",
+    resetAllResetting: "正在还原…",
+    resetAllFailed: "还原设置失败",
+  },
   widget: {
     server_list: "服务器",
     terminal: "终端",

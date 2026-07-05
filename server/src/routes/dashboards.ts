@@ -4,6 +4,7 @@ import {
   getDefaultDashboard,
   updateDashboard,
 } from "../db/dashboards";
+import { resetUserData } from "../db/reset-user-data";
 import type { Variables } from "../types";
 
 export const dashboardRoutes = new Hono<{
@@ -35,6 +36,23 @@ dashboardRoutes.put("/", async (c) => {
 
   const dashboard = await updateDashboard(c.env.DB, user.id, body);
   return c.json(dashboard);
+});
+
+dashboardRoutes.post("/reset", async (c) => {
+  const user = c.get("user");
+  try {
+    const dashboard = await resetUserData(c.env.DB, user.id);
+    return c.json(dashboard);
+  } catch (error) {
+    console.error("reset user data failed", error);
+    return c.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to reset user data",
+      },
+      500,
+    );
+  }
 });
 
 dashboardRoutes.get("/default", async (c) => {
