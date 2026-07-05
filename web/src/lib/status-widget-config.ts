@@ -43,9 +43,13 @@ export function getBandwidthMaxSlots(pollIntervalMs: number): number {
   return Math.max(1, Math.floor(BANDWIDTH_HISTORY_MS / pollIntervalMs));
 }
 
-export function formatPollIntervalLabel(pollIntervalMs: number): string {
-  if (pollIntervalMs % 1000 === 0) {
-    return `${pollIntervalMs / 1000} 秒`;
-  }
-  return `${(pollIntervalMs / 1000).toFixed(1)} 秒`;
+export function formatPollIntervalLabel(
+  pollIntervalMs: number,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
+  const count =
+    pollIntervalMs % 1000 === 0
+      ? pollIntervalMs / 1000
+      : Number((pollIntervalMs / 1000).toFixed(1));
+  return t("common.seconds", { count });
 }

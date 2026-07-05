@@ -3,18 +3,20 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n";
 import { api, type Server, type TreeNode } from "@/lib/api";
-import {
-  formatBytes,
-  formatDuration,
-  formatLoad,
-  type ServerStatusMetrics,
-} from "@/lib/server-status";
+import { computeNetRates } from "@/lib/server-status";
 import { isSessionAlive, type ServerSession } from "@/lib/sessions";
-import { formatPollIntervalLabel } from "@/lib/status-widget-config";
+import {
+  BANDWIDTH_HISTORY_MS,
+  formatPollIntervalLabel,
+  getBandwidthMaxSlots,
+} from "@/lib/status-widget-config";
 import { cn } from "@/lib/utils";
-import { MetricBar } from "@/widgets/shared/MetricBar";
+import {
+  NetworkBandwidthChart,
+  type BandwidthSample,
+} from "@/widgets/NetworkBandwidthChart";
 
-export interface StatusWidgetProps {
+export interface NetworkStatusWidgetProps {
   activeServerId: string | null;
   sessions: Record<string, ServerSession>;
   tree: TreeNode[];
@@ -34,26 +36,45 @@ function findServer(tree: TreeNode[], serverId: string): Server | null {
   return null;
 }
 
-export function StatusWidget({
+function trimBandwidthHistory(
+  samples: BandwidthSample[],
+  now: number,
+): BandwidthSample[] {
+  const cutoff = now - BANDWIDTH_HISTORY_MS;
+  return samples.filter((sample) => sample.at >= cutoff);
+}
+
+export function NetworkStatusWidget({
   activeServerId,
   sessions,
   tree,
   pollIntervalMs,
-}: StatusWidgetProps) {
+}: NetworkStatusWidgetProps) {
   const t = useT();
   const session = activeServerId ? sessions[activeServerId] : null;
   const server = activeServerId ? findServer(tree, activeServerId) : null;
   const mountedRef = useRef(true);
-  const [metrics, setMetrics] = useState<ServerStatusMetrics | null>(null);
+  const lastNetSampleRef = useRef<{
+    rxBytes: number;
+    txBytes: number;
+    at: number;
+  } | null>(null);
+  const [rxRate, setRxRate] = useState<number | null>(null);
+  const [txRate, setTxRate] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [bandwidthHistory, setBandwidthHistory] = useState<BandwidthSample[]>([]);
+  const maxBandwidthSlots = getBandwidthMaxSlots(pollIntervalMs);
 
   const fetchStatus = useCallback(async () => {
     if (!session || session.status !== "open") {
-      setMetrics(null);
+      setRxRate(null);
+      setTxRate(null);
       setError(null);
       setUpdatedAt(null);
+      setBandwidthHistory([]);
+      lastNetSampleRef.current = null;
       return;
     }
 
@@ -63,8 +84,36 @@ export function StatusWidget({
       const response = await api.getSessionStatus(session.sessionId);
       if (!mountedRef.current) return;
 
-      setMetrics(response.metrics);
+      const at = Date.parse(response.collectedAt) || Date.now();
+      const rates = computeNetRates(
+        response.metrics.netRxBytes,
+        response.metrics.netTxBytes,
+        lastNetSampleRef.current,
+        at,
+      );
+      if (rates.sample) {
+        lastNetSampleRef.current = rates.sample;
+      }
+
+      setRxRate(rates.netRxRate);
+      setTxRate(rates.netTxRate);
       setUpdatedAt(response.collectedAt);
+
+      if (rates.netRxRate !== null && rates.netTxRate !== null) {
+        setBandwidthHistory((current) =>
+          trimBandwidthHistory(
+            [
+              ...current,
+              {
+                rx: rates.netRxRate!,
+                tx: rates.netTxRate!,
+                at,
+              },
+            ],
+            at,
+          ),
+        );
+      }
     } catch (err) {
       if (!mountedRef.current) return;
       setError(err instanceof Error ? err.message : t("status.collectFailed"));
@@ -81,6 +130,11 @@ export function StatusWidget({
   }, []);
 
   useEffect(() => {
+    setBandwidthHistory([]);
+    lastNetSampleRef.current = null;
+  }, [session?.sessionId, pollIntervalMs]);
+
+  useEffect(() => {
     void fetchStatus();
     if (!session || session.status !== "open") return;
 
@@ -94,10 +148,12 @@ export function StatusWidget({
   if (!session) {
     return (
       <div className="flex h-full items-center justify-center p-4 text-sm text-[var(--color-muted-foreground)]">
-        {t("status.selectServer")}
+        {t("network.selectServer")}
       </div>
     );
   }
+
+  const hasRates = rxRate !== null && txRate !== null;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -129,7 +185,7 @@ export function StatusWidget({
 
       {!isSessionAlive(session.status) && (
         <div className="flex flex-1 items-center justify-center p-4 text-sm text-[var(--color-muted-foreground)]">
-          {t("status.connectFirst")}
+          {t("network.connectFirst")}
         </div>
       )}
 
@@ -137,90 +193,19 @@ export function StatusWidget({
         <div className="alert-destructive px-3 py-2 text-xs">{error}</div>
       )}
 
-      {isSessionAlive(session.status) && metrics && (
-        <div className="min-h-0 flex-1 space-y-4 overflow-auto p-3">
-          <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
-            <div className="bg-[var(--color-secondary)]/50 p-2">
-              <div className="text-[var(--color-muted-foreground)]">
-                {t("status.load1")}
-              </div>
-              <div className="mt-1 text-sm">{formatLoad(metrics.load1)}</div>
-            </div>
-            <div className="bg-[var(--color-secondary)]/50 p-2">
-              <div className="text-[var(--color-muted-foreground)]">
-                {t("status.load5")}
-              </div>
-              <div className="mt-1 text-sm">{formatLoad(metrics.load5)}</div>
-            </div>
-            <div className="bg-[var(--color-secondary)]/50 p-2">
-              <div className="text-[var(--color-muted-foreground)]">
-                {t("status.load15")}
-              </div>
-              <div className="mt-1 text-sm">{formatLoad(metrics.load15)}</div>
-            </div>
-          </div>
-
-          <MetricBar
-            label={t("status.cpu")}
-            value={metrics.cpuUsedPercent}
-            detail={
-              metrics.cpuUsedPercent !== null
-                ? `${metrics.cpuUsedPercent}%`
-                : "-"
-            }
+      {isSessionAlive(session.status) && hasRates && (
+        <div className="min-h-0 flex-1 overflow-auto p-3">
+          <NetworkBandwidthChart
+            history={bandwidthHistory}
+            maxSlots={maxBandwidthSlots}
+            pollIntervalMs={pollIntervalMs}
+            rxRate={rxRate}
+            txRate={txRate}
           />
-
-          <MetricBar
-            label={t("status.memory")}
-            value={metrics.memoryUsedPercent}
-            detail={
-              metrics.memoryTotal !== null
-                ? metrics.memoryUsedPercent !== null
-                  ? t("status.availablePercent", {
-                      percent: metrics.memoryUsedPercent,
-                      available: formatBytes(metrics.memoryAvailable),
-                      total: formatBytes(metrics.memoryTotal),
-                    })
-                  : t("status.available", {
-                      available: formatBytes(metrics.memoryAvailable),
-                      total: formatBytes(metrics.memoryTotal),
-                    })
-                : "-"
-            }
-          />
-
-          <MetricBar
-            label={t("status.disk")}
-            value={metrics.diskUsedPercent}
-            detail={
-              metrics.diskUsedPercent !== null
-                ? t("status.availablePercent", {
-                    percent: metrics.diskUsedPercent,
-                    available: formatBytes(metrics.diskAvailable),
-                    total: formatBytes(metrics.diskTotal),
-                  })
-                : "-"
-            }
-          />
-
-          <div className="grid grid-cols-1 gap-2 text-[11px]">
-            <div className="flex justify-between gap-3">
-              <span className="text-[var(--color-muted-foreground)]">
-                {t("status.uptime")}
-              </span>
-              <span>{formatDuration(metrics.uptimeSeconds)}</span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-[var(--color-muted-foreground)]">
-                {t("status.system")}
-              </span>
-              <span className="truncate text-right">{metrics.osInfo ?? "-"}</span>
-            </div>
-          </div>
         </div>
       )}
 
-      {isSessionAlive(session.status) && loading && !metrics && !error && (
+      {isSessionAlive(session.status) && loading && !hasRates && !error && (
         <div className="flex flex-1 items-center justify-center p-4 text-sm text-[var(--color-muted-foreground)]">
           {t("status.collecting")}
         </div>

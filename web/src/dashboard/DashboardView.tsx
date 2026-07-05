@@ -17,6 +17,7 @@ import { ServerListWidget } from "@/widgets/ServerListWidget";
 import { FileManagerWidget } from "@/widgets/FileManagerWidget";
 import { QuickCommandsWidget } from "@/widgets/QuickCommandsWidget";
 import { StatusWidget } from "@/widgets/StatusWidget";
+import { NetworkStatusWidget } from "@/widgets/NetworkStatusWidget";
 import { TerminalWidget } from "@/widgets/TerminalWidget";
 import { AddGroupDialog } from "./AddGroupDialog";
 import { AddQuickCommandDialog } from "./AddQuickCommandDialog";
@@ -93,7 +94,7 @@ export function DashboardView() {
   const [quickCommandAddWidgetId, setQuickCommandAddWidgetId] = useState<
     string | null
   >(null);
-  const [statusSettingsWidgetId, setStatusSettingsWidgetId] = useState<
+  const [pollSettingsWidgetId, setPollSettingsWidgetId] = useState<
     string | null
   >(null);
   const dashboardRef = useRef<Dashboard | null>(null);
@@ -676,7 +677,7 @@ export function DashboardView() {
             );
           }
 
-          if (widget.type === "status") {
+          if (widget.type === "status" || widget.type === "network") {
             return (
               <div className="widget-no-drag flex items-center gap-1">
                 <Button
@@ -684,7 +685,7 @@ export function DashboardView() {
                   size="sm"
                   variant="secondary"
                   title={t("common.settings")}
-                  onClick={() => setStatusSettingsWidgetId(item.i)}
+                  onClick={() => setPollSettingsWidgetId(item.i)}
                 >
                   <Settings className="h-3.5 w-3.5" />
                 </Button>
@@ -794,6 +795,19 @@ export function DashboardView() {
             );
           }
 
+          if (widget.type === "network") {
+            return (
+              <NetworkStatusWidget
+                activeServerId={activeServerId}
+                pollIntervalMs={
+                  parseStatusWidgetConfig(widget.config_json).pollIntervalMs
+                }
+                sessions={sessions}
+                tree={tree}
+              />
+            );
+          }
+
           if (widget.type === "quick_commands") {
             return (
               <QuickCommandsWidget
@@ -870,16 +884,23 @@ export function DashboardView() {
       <StatusSettingsDialog
         configJson={
           dashboard.widgets.find(
-            (widget) => widget.id === statusSettingsWidgetId,
+            (widget) => widget.id === pollSettingsWidgetId,
           )?.config_json ?? null
         }
-        open={statusSettingsWidgetId !== null}
+        titleKey={
+          dashboard.widgets.find(
+            (widget) => widget.id === pollSettingsWidgetId,
+          )?.type === "network"
+            ? "network.settingsTitle"
+            : "status.settingsTitle"
+        }
+        open={pollSettingsWidgetId !== null}
         onOpenChange={(open) => {
-          if (!open) setStatusSettingsWidgetId(null);
+          if (!open) setPollSettingsWidgetId(null);
         }}
         onSaved={(configJson) => {
-          if (statusSettingsWidgetId) {
-            handleWidgetConfigChange(statusSettingsWidgetId, configJson);
+          if (pollSettingsWidgetId) {
+            handleWidgetConfigChange(pollSettingsWidgetId, configJson);
           }
         }}
       />

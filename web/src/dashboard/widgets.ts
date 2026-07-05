@@ -3,6 +3,7 @@ export const ADDABLE_WIDGETS = [
   { type: "terminal", defaultSize: { w: 6, h: 8 } },
   { type: "file_manager", defaultSize: { w: 3, h: 8 } },
   { type: "status", defaultSize: { w: 3, h: 6 } },
+  { type: "network", defaultSize: { w: 3, h: 6 } },
   { type: "quick_commands", defaultSize: { w: 3, h: 6 } },
 ] as const;
 

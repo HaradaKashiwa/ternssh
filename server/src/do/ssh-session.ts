@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { getCredentialValue, getServer } from "../db/servers";
 import {
+  computeCpuUsage,
   computeNetRates,
   parseStatusOutput,
   STATUS_COMMAND,
@@ -24,6 +25,8 @@ export class SshSession extends DurableObject<Env> {
   private statusBootstrapping: Promise<void> | null = null;
   private connectionConfig: SSHConnectionConfig | null = null;
   private lastNetSample: { rxBytes: number; txBytes: number; at: number } | null =
+    null;
+  private lastCpuSample: { total: number; idle: number; at: number } | null =
     null;
   private statusCollectChain: Promise<void> = Promise.resolve();
 
@@ -178,8 +181,18 @@ export class SshSession extends DurableObject<Env> {
           if (sample) {
             this.lastNetSample = sample;
           }
+          const { cpuUsedPercent, sample: cpuSample } = computeCpuUsage(
+            parsed.cpuTotalJiffies,
+            parsed.cpuIdleJiffies,
+            this.lastCpuSample,
+            now,
+          );
+          if (cpuSample) {
+            this.lastCpuSample = cpuSample;
+          }
           parsed.metrics.netRxRate = netRxRate;
           parsed.metrics.netTxRate = netTxRate;
+          parsed.metrics.cpuUsedPercent = cpuUsedPercent;
           return Response.json({
             serverId: session.server_id,
             collectedAt: new Date(now).toISOString(),
@@ -247,6 +260,7 @@ export class SshSession extends DurableObject<Env> {
     this.statusBootstrapping = null;
     if (clearNetSample) {
       this.lastNetSample = null;
+      this.lastCpuSample = null;
     }
   }
 

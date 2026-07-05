@@ -62,6 +62,7 @@ export const en: Messages = {
     terminal: "Terminal",
     file_manager: "Files",
     status: "Server status",
+    network: "Network",
     quick_commands: "Quick commands",
     comingSoon: "{type} coming soon",
     deleteTitle: "Remove widget",
@@ -185,6 +186,7 @@ export const en: Messages = {
     load1: "1 min",
     load5: "5 min",
     load15: "15 min",
+    cpu: "CPU",
     memory: "Memory",
     disk: "Disk /",
     uptime: "Uptime",
@@ -202,6 +204,11 @@ export const en: Messages = {
     sampleDownload: "{time} · Download {rate}",
     sampleUpload: "{time} · Upload {rate}",
     sessionStatus: "{label}: {status}",
+  },
+  network: {
+    selectServer: "Select or connect a server to view network status",
+    connectFirst: "Connect a terminal session before viewing network status",
+    settingsTitle: "Network settings",
   },
   quickCommands: {
     hint: "Commands run in the selected server's terminal.",

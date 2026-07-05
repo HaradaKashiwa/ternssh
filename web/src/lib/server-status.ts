@@ -2,6 +2,7 @@ export interface ServerStatusMetrics {
   load1: number | null;
   load5: number | null;
   load15: number | null;
+  cpuUsedPercent: number | null;
   memoryTotal: number | null;
   memoryAvailable: number | null;
   memoryUsedPercent: number | null;

@@ -8,6 +8,7 @@ export interface ServerStatusMetrics {
   load1: number | null;
   load5: number | null;
   load15: number | null;
+  cpuUsedPercent: number | null;
   memoryTotal: number | null;
   memoryAvailable: number | null;
   memoryUsedPercent: number | null;
@@ -25,6 +26,7 @@ export interface ServerStatusMetrics {
 
 const STATUS_SCRIPT = [
   'echo "LOAD:$(cut -d" " -f1-3 /proc/loadavg 2>/dev/null)"',
+  'echo "CPU:$(awk \'/^cpu / {print $2+$3+$4+$5+$6+$7+$8+$9, $5+$6; exit}\' /proc/stat 2>/dev/null)"',
   'MT=$(awk \'/MemTotal/ {print $2; exit}\' /proc/meminfo 2>/dev/null); MA=$(awk \'/MemAvailable/ {print $2; exit}\' /proc/meminfo 2>/dev/null); [ -n "$MA" ] || MA=$(awk \'/MemFree/ {print $2; exit}\' /proc/meminfo 2>/dev/null); echo "MEM:${MT} ${MA}"',
   'echo "DISK:$(df -Pk / 2>/dev/null | awk \'NR==2 {print $2, $3, $4; exit}\')"',
   'echo "NET:$(awk \'$1 ~ /:/ {gsub(/:/,"",$1); if ($1!="lo") {rx+=$2; tx+=$10}} END {print rx, tx}\' /proc/net/dev 2>/dev/null)"',
@@ -46,11 +48,14 @@ export function parseStatusOutput(output: string): {
   metrics: ServerStatusMetrics;
   netRxBytes: number | null;
   netTxBytes: number | null;
+  cpuTotalJiffies: number | null;
+  cpuIdleJiffies: number | null;
 } {
   const metrics: ServerStatusMetrics = {
     load1: null,
     load5: null,
     load15: null,
+    cpuUsedPercent: null,
     memoryTotal: null,
     memoryAvailable: null,
     memoryUsedPercent: null,
@@ -67,6 +72,8 @@ export function parseStatusOutput(output: string): {
   };
   let netRxBytes: number | null = null;
   let netTxBytes: number | null = null;
+  let cpuTotalJiffies: number | null = null;
+  let cpuIdleJiffies: number | null = null;
 
   for (const line of output.split("\n")) {
     const trimmed = line.trim();
@@ -80,6 +87,13 @@ export function parseStatusOutput(output: string): {
         metrics.load1 = parseNumber(parts[0]);
         metrics.load5 = parseNumber(parts[1]);
         metrics.load15 = parseNumber(parts[2]);
+        break;
+      }
+      case "CPU": {
+        if (!value) break;
+        const parts = value.split(/\s+/).filter(Boolean);
+        cpuTotalJiffies = parseNumber(parts[0]);
+        cpuIdleJiffies = parseNumber(parts[1]);
         break;
       }
       case "MEM": {
@@ -128,7 +142,39 @@ export function parseStatusOutput(output: string): {
     }
   }
 
-  return { metrics, netRxBytes, netTxBytes };
+  return { metrics, netRxBytes, netTxBytes, cpuTotalJiffies, cpuIdleJiffies };
+}
+
+export function computeCpuUsage(
+  cpuTotalJiffies: number | null,
+  cpuIdleJiffies: number | null,
+  lastSample: { total: number; idle: number; at: number } | null,
+  now = Date.now(),
+): {
+  cpuUsedPercent: number | null;
+  sample: { total: number; idle: number; at: number } | null;
+} {
+  if (cpuTotalJiffies === null || cpuIdleJiffies === null) {
+    return { cpuUsedPercent: null, sample: lastSample };
+  }
+
+  const sample = { total: cpuTotalJiffies, idle: cpuIdleJiffies, at: now };
+
+  if (!lastSample) {
+    return { cpuUsedPercent: null, sample };
+  }
+
+  const deltaTotal = cpuTotalJiffies - lastSample.total;
+  const deltaIdle = cpuIdleJiffies - lastSample.idle;
+  if (deltaTotal <= 0) {
+    return { cpuUsedPercent: null, sample };
+  }
+
+  const usedPercent = Math.round(((deltaTotal - deltaIdle) / deltaTotal) * 100);
+  return {
+    cpuUsedPercent: Math.max(0, Math.min(100, usedPercent)),
+    sample,
+  };
 }
 
 export function computeNetRates(

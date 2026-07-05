@@ -59,6 +59,7 @@ export const zh = {
     terminal: "终端",
     file_manager: "文件管理",
     status: "服务器状态",
+    network: "网络状态",
     quick_commands: "快捷命令",
     comingSoon: "{type} 即将推出",
     deleteTitle: "删除组件",
@@ -181,6 +182,7 @@ export const zh = {
     load1: "1 分钟",
     load5: "5 分钟",
     load15: "15 分钟",
+    cpu: "CPU",
     memory: "内存",
     disk: "磁盘 /",
     uptime: "运行时间",
@@ -199,6 +201,11 @@ export const zh = {
     sampleDownload: "{time} 下载 {rate}",
     sampleUpload: "{time} 上传 {rate}",
     sessionStatus: "{label}：{status}",
+  },
+  network: {
+    selectServer: "选择或连接服务器以查看网络状态",
+    connectFirst: "请先连接终端会话后再查看网络状态",
+    settingsTitle: "网络状态设置",
   },
   quickCommands: {
     hint: "点击命令将在当前选中的服务器终端中执行。",

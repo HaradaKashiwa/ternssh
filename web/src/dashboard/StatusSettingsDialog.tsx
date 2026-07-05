@@ -17,6 +17,7 @@ interface StatusSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   configJson: string | null;
+  titleKey?: string;
   onSaved: (configJson: string) => void;
 }
 
@@ -24,6 +25,7 @@ export function StatusSettingsDialog({
   open,
   onOpenChange,
   configJson,
+  titleKey = "status.settingsTitle",
   onSaved,
 }: StatusSettingsDialogProps) {
   const t = useT();
@@ -81,7 +83,7 @@ export function StatusSettingsDialog({
   return (
     <Modal open={open} onOpenChange={onOpenChange}>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{t("status.settingsTitle")}</h2>
+        <h2 className="text-lg font-semibold">{t(titleKey)}</h2>
         <Button variant="ghost" onClick={handleClose}>
           {t("common.close")}
         </Button>
