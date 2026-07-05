@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
-import { FolderPlus, Plus, X } from "lucide-react";
+import { FolderPlus, Plus, Settings, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api, type Dashboard, type MeResponse, type TreeNode } from "@/lib/api";
@@ -9,14 +9,18 @@ import {
   type ServerSession,
   type SessionStatus,
 } from "@/lib/sessions";
+import { parseStatusWidgetConfig } from "@/lib/status-widget-config";
 import { ServerListWidget } from "@/widgets/ServerListWidget";
 import { FileManagerWidget } from "@/widgets/FileManagerWidget";
+import { QuickCommandsWidget } from "@/widgets/QuickCommandsWidget";
 import { StatusWidget } from "@/widgets/StatusWidget";
 import { TerminalWidget } from "@/widgets/TerminalWidget";
 import type { WidgetContext } from "@/widgets/types";
 import { AddGroupDialog } from "./AddGroupDialog";
+import { AddQuickCommandDialog } from "./AddQuickCommandDialog";
 import { AddServerDialog } from "./AddServerDialog";
 import { RenameGroupDialog } from "./RenameGroupDialog";
+import { StatusSettingsDialog } from "./StatusSettingsDialog";
 import { AddWidgetMenu } from "./AddWidgetMenu";
 import { GridDashboard } from "./GridDashboard";
 import { findWidgetPlacement, layoutsEqual, type GridItem } from "./grid-utils";
@@ -79,6 +83,12 @@ export function DashboardView() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameGroupId, setRenameGroupId] = useState<string | null>(null);
   const [renameGroupName, setRenameGroupName] = useState("");
+  const [quickCommandAddWidgetId, setQuickCommandAddWidgetId] = useState<
+    string | null
+  >(null);
+  const [statusSettingsWidgetId, setStatusSettingsWidgetId] = useState<
+    string | null
+  >(null);
   const dashboardRef = useRef<Dashboard | null>(null);
   const persistTimerRef = useRef<number | null>(null);
   const isEditingRef = useRef(false);
@@ -267,6 +277,47 @@ export function DashboardView() {
       }
     })();
   }, [layout]);
+
+  const handleWidgetConfigChange = useCallback(
+    (widgetId: string, configJson: string) => {
+      const dashboardSnapshot = dashboardRef.current;
+      if (!dashboardSnapshot) return;
+
+      const widgets = dashboardSnapshot.widgets.map((widget) =>
+        widget.id === widgetId
+          ? { ...widget, config_json: configJson }
+          : widget,
+      );
+      const optimistic = { ...dashboardSnapshot, widgets };
+      dashboardRef.current = optimistic;
+      setDashboard(optimistic);
+
+      void (async () => {
+        try {
+          const updated = await api.updateDashboard({
+            widgets: widgets.map(
+              ({ id, type, config_json, grid_x, grid_y, grid_w, grid_h }) => ({
+                id,
+                type,
+                config_json,
+                grid_x,
+                grid_y,
+                grid_w,
+                grid_h,
+              }),
+            ),
+          });
+          dashboardRef.current = updated;
+          setDashboard(updated);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "保存组件配置失败");
+          dashboardRef.current = dashboardSnapshot;
+          setDashboard(dashboardSnapshot);
+        }
+      })();
+    },
+    [],
+  );
 
   const handleAddWidget = useCallback((type: string) => {
     const dashboardSnapshot = dashboardRef.current;
@@ -459,7 +510,7 @@ export function DashboardView() {
             return <Badge>{terminalBadge}</Badge>;
           }
 
-          if (widget.type === "file_manager" || widget.type === "status") {
+          if (widget.type === "file_manager") {
             return (
               <Button
                 className="widget-no-drag"
@@ -470,6 +521,56 @@ export function DashboardView() {
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
+            );
+          }
+
+          if (widget.type === "status") {
+            return (
+              <div className="widget-no-drag flex items-center gap-1">
+                <Button
+                  className="widget-no-drag"
+                  size="sm"
+                  variant="secondary"
+                  title="设置"
+                  onClick={() => setStatusSettingsWidgetId(item.i)}
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  className="widget-no-drag"
+                  size="sm"
+                  variant="secondary"
+                  title="删除组件"
+                  onClick={() => handleRemoveWidget(item.i)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            );
+          }
+
+          if (widget.type === "quick_commands") {
+            return (
+              <div className="widget-no-drag flex items-center gap-1">
+                <Button
+                  className="widget-no-drag"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setQuickCommandAddWidgetId(item.i)}
+                >
+                  <Plus className="mr-1 h-3 w-3" />
+                  添加
+                </Button>
+                <Button
+                  className="widget-no-drag"
+                  size="sm"
+                  variant="secondary"
+                  title="删除组件"
+                  onClick={() => handleRemoveWidget(item.i)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             );
           }
 
@@ -530,8 +631,24 @@ export function DashboardView() {
             return (
               <StatusWidget
                 activeServerId={activeServerId}
+                pollIntervalMs={
+                  parseStatusWidgetConfig(widget.config_json).pollIntervalMs
+                }
                 sessions={sessions}
                 tree={tree}
+              />
+            );
+          }
+
+          if (widget.type === "quick_commands") {
+            return (
+              <QuickCommandsWidget
+                activeServerId={activeServerId}
+                configJson={widget.config_json}
+                sessions={sessions}
+                onConfigChange={(configJson) =>
+                  handleWidgetConfigChange(widget.id, configJson)
+                }
               />
             );
           }
@@ -576,6 +693,40 @@ export function DashboardView() {
           setRenameGroupId(null);
           setRenameGroupName("");
           await load();
+        }}
+      />
+
+      <AddQuickCommandDialog
+        configJson={
+          dashboard.widgets.find(
+            (widget) => widget.id === quickCommandAddWidgetId,
+          )?.config_json ?? null
+        }
+        open={quickCommandAddWidgetId !== null}
+        onAdded={(configJson) => {
+          if (quickCommandAddWidgetId) {
+            handleWidgetConfigChange(quickCommandAddWidgetId, configJson);
+          }
+        }}
+        onOpenChange={(open) => {
+          if (!open) setQuickCommandAddWidgetId(null);
+        }}
+      />
+
+      <StatusSettingsDialog
+        configJson={
+          dashboard.widgets.find(
+            (widget) => widget.id === statusSettingsWidgetId,
+          )?.config_json ?? null
+        }
+        open={statusSettingsWidgetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setStatusSettingsWidgetId(null);
+        }}
+        onSaved={(configJson) => {
+          if (statusSettingsWidgetId) {
+            handleWidgetConfigChange(statusSettingsWidgetId, configJson);
+          }
         }}
       />
       </div>

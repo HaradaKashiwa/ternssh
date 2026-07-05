@@ -15,12 +15,18 @@ import {
   SESSION_STATUS_LABEL,
   type ServerSession,
 } from "@/lib/sessions";
+import {
+  BANDWIDTH_HISTORY_MS,
+  formatPollIntervalLabel,
+  getBandwidthMaxSlots,
+} from "@/lib/status-widget-config";
 import { cn } from "@/lib/utils";
 
 export interface StatusWidgetProps {
   activeServerId: string | null;
   sessions: Record<string, ServerSession>;
   tree: TreeNode[];
+  pollIntervalMs: number;
 }
 
 function findServer(tree: TreeNode[], serverId: string): Server | null {
@@ -74,9 +80,6 @@ interface BandwidthSample {
   at: number;
 }
 
-const BANDWIDTH_POLL_MS = 5000;
-const BANDWIDTH_HISTORY_MS = 2 * 60 * 1000;
-const BANDWIDTH_MAX_SLOTS = Math.floor(BANDWIDTH_HISTORY_MS / BANDWIDTH_POLL_MS);
 const BANDWIDTH_CHART_HEIGHT_PX = 56;
 
 function barHeightPx(value: number, max: number): number {
@@ -95,13 +98,14 @@ function trimBandwidthHistory(
 /** Pad to a fixed slot count; newest samples align to the right. */
 function buildBandwidthSlots(
   history: BandwidthSample[],
+  maxSlots: number,
 ): (BandwidthSample | null)[] {
   const slots: (BandwidthSample | null)[] = Array.from(
-    { length: BANDWIDTH_MAX_SLOTS },
+    { length: maxSlots },
     () => null,
   );
-  const filled = history.slice(-BANDWIDTH_MAX_SLOTS);
-  const offset = BANDWIDTH_MAX_SLOTS - filled.length;
+  const filled = history.slice(-maxSlots);
+  const offset = maxSlots - filled.length;
   for (let i = 0; i < filled.length; i++) {
     slots[offset + i] = filled[i]!;
   }
@@ -112,16 +116,21 @@ function BandwidthChart({
   rxRate,
   txRate,
   history,
+  maxSlots,
+  pollIntervalMs,
 }: {
   rxRate: number | null;
   txRate: number | null;
   history: BandwidthSample[];
+  maxSlots: number;
+  pollIntervalMs: number;
 }) {
   const historyRxMax = Math.max(...history.map((sample) => sample.rx), 0);
   const historyTxMax = Math.max(...history.map((sample) => sample.tx), 0);
   const rxScaleMax = historyRxMax > 0 ? historyRxMax : 1;
   const txScaleMax = historyTxMax > 0 ? historyTxMax : 1;
-  const slots = buildBandwidthSlots(history);
+  const slots = buildBandwidthSlots(history, maxSlots);
+  const historyMinutes = BANDWIDTH_HISTORY_MS / 60000;
 
   return (
     <div className="space-y-2">
@@ -156,7 +165,8 @@ function BandwidthChart({
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2 text-[10px] text-[var(--color-muted-foreground)]">
           <span>
-            近 2 分钟 · {history.length}/{BANDWIDTH_MAX_SLOTS} 次采样
+            近 {historyMinutes} 分钟 · 每 {formatPollIntervalLabel(pollIntervalMs)} ·{" "}
+            {history.length}/{maxSlots} 次采样
           </span>
           {history.length > 0 && (
             <span className="truncate text-right">
@@ -200,7 +210,7 @@ function BandwidthChart({
           </div>
         </div>
         <div className="flex justify-between text-[10px] text-[var(--color-muted-foreground)]">
-          <span>2 分钟前</span>
+          <span>{historyMinutes} 分钟前</span>
           <span>现在</span>
         </div>
         <div className="flex justify-between text-[10px] text-[var(--color-muted-foreground)]">
@@ -216,6 +226,7 @@ export function StatusWidget({
   activeServerId,
   sessions,
   tree,
+  pollIntervalMs,
 }: StatusWidgetProps) {
   const session = activeServerId ? sessions[activeServerId] : null;
   const server = activeServerId ? findServer(tree, activeServerId) : null;
@@ -230,6 +241,7 @@ export function StatusWidget({
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [bandwidthHistory, setBandwidthHistory] = useState<BandwidthSample[]>([]);
+  const maxBandwidthSlots = getBandwidthMaxSlots(pollIntervalMs);
 
   const fetchStatus = useCallback(async () => {
     if (!session || session.status !== "open") {
@@ -299,7 +311,7 @@ export function StatusWidget({
   useEffect(() => {
     setBandwidthHistory([]);
     lastNetSampleRef.current = null;
-  }, [session?.sessionId]);
+  }, [session?.sessionId, pollIntervalMs]);
 
   useEffect(() => {
     void fetchStatus();
@@ -307,10 +319,10 @@ export function StatusWidget({
 
     const timer = window.setInterval(() => {
       void fetchStatus();
-    }, BANDWIDTH_POLL_MS);
+    }, pollIntervalMs);
 
     return () => window.clearInterval(timer);
-  }, [fetchStatus, session?.sessionId, session?.status]);
+  }, [fetchStatus, pollIntervalMs, session?.sessionId, session?.status]);
 
   if (!session) {
     return (
@@ -401,9 +413,11 @@ export function StatusWidget({
           />
 
           <BandwidthChart
+            history={bandwidthHistory}
+            maxSlots={maxBandwidthSlots}
+            pollIntervalMs={pollIntervalMs}
             rxRate={metrics.netRxRate}
             txRate={metrics.netTxRate}
-            history={bandwidthHistory}
           />
 
           <div className="grid grid-cols-1 gap-2 text-[11px]">
@@ -427,8 +441,8 @@ export function StatusWidget({
 
       <div className="border-t border-[var(--color-border)] px-3 py-1.5 text-[11px] text-[var(--color-muted-foreground)]">
         {updatedAt
-          ? `更新于 ${new Date(updatedAt).toLocaleTimeString()}`
-          : "等待数据"}
+          ? `更新于 ${new Date(updatedAt).toLocaleTimeString()} · 采样 ${formatPollIntervalLabel(pollIntervalMs)}`
+          : `等待数据 · 采样 ${formatPollIntervalLabel(pollIntervalMs)}`}
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { ServerSession } from "@/lib/sessions";
+import { registerTerminalRunner } from "@/lib/terminal-bridge";
 import { cn } from "@/lib/utils";
 import type { TerminalWidgetProps } from "./types";
 import "@xterm/xterm/css/xterm.css";
@@ -57,10 +58,17 @@ function SessionPane({
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const runCommandRef = useRef<(command: string) => boolean>(() => false);
   const onStatusChangeRef = useRef(onStatusChange);
   const onClosedRef = useRef(onClosed);
   onStatusChangeRef.current = onStatusChange;
   onClosedRef.current = onClosed;
+
+  useEffect(() => {
+    return registerTerminalRunner(session.serverId, (command) =>
+      runCommandRef.current(command),
+    );
+  }, [session.serverId]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -117,6 +125,18 @@ function SessionPane({
       );
     };
 
+    runCommandRef.current = (command: string) => {
+      const term = terminalRef.current;
+      const currentWs = wsRef.current;
+      if (!term || !currentWs || currentWs.readyState !== WebSocket.OPEN) {
+        return false;
+      }
+      const normalized = command.replace(/\r\n/g, "\n");
+      term.write(`${normalized.replace(/\n/g, "\r\n")}\r\n`);
+      currentWs.send(`${normalized}\n`);
+      return true;
+    };
+
     ws.onopen = () => {
       onStatusChangeRef.current("open");
       sendResize();
@@ -166,6 +186,7 @@ function SessionPane({
       onData.dispose();
       ws.close();
       wsRef.current = null;
+      runCommandRef.current = () => false;
     };
   }, [session.wsUrl, session.serverId]);
 
