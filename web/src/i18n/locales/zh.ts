@@ -95,6 +95,7 @@ export const zh = {
   terminal: {
     emptyHint:
       "选择服务器并连接以打开会话。已连接的会话可在列表中切换。",
+    suggestHint: "输入时显示命令联想，Tab 补全，↑↓ 切换候选项",
   },
   serverList: {
     loading: "加载中...",

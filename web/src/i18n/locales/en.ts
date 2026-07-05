@@ -101,6 +101,7 @@ export const en: Messages = {
   terminal: {
     emptyHint:
       "Select a server and connect to open a session. Switch between connected sessions in the list.",
+    suggestHint: "Suggestions appear as you type. Tab to complete, ↑↓ to cycle",
   },
   serverList: {
     loading: "Loading...",

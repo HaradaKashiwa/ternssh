@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
+import { TerminalSuggestionBar } from "@/components/TerminalSuggestionBar";
 import { useI18n } from "@/i18n";
 import { usePersonalization, type TerminalThemeColors } from "@/theme";
 import {
@@ -8,6 +9,12 @@ import {
   type ServerSession,
 } from "@/lib/sessions";
 import { registerTerminalRunner } from "@/lib/terminal-bridge";
+import {
+  completionSuffix,
+  findTerminalSuggestions,
+  pushTerminalHistory,
+  readTerminalPartialCommand,
+} from "@/lib/terminal-suggestions";
 import { cn } from "@/lib/utils";
 import type { TerminalWidgetProps } from "./types";
 import "@xterm/xterm/css/xterm.css";
@@ -75,8 +82,39 @@ function SessionPane({
   const runCommandRef = useRef<(command: string) => boolean>(() => false);
   const onStatusChangeRef = useRef(onStatusChange);
   const onClosedRef = useRef(onClosed);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [partial, setPartial] = useState("");
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
+  const suggestionsRef = useRef<string[]>([]);
+  const activeSuggestionIndexRef = useRef(0);
+  suggestionsRef.current = suggestions;
+  activeSuggestionIndexRef.current = activeSuggestionIndex;
   onStatusChangeRef.current = onStatusChange;
   onClosedRef.current = onClosed;
+
+  const refreshSuggestions = () => {
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+    const nextPartial = readTerminalPartialCommand(terminal);
+    const nextSuggestions = findTerminalSuggestions(
+      session.serverId,
+      nextPartial,
+    );
+    setPartial(nextPartial);
+    setSuggestions(nextSuggestions);
+    setActiveSuggestionIndex(0);
+  };
+
+  const applySuggestion = (suggestion: string) => {
+    const terminal = terminalRef.current;
+    const ws = wsRef.current;
+    if (!terminal || !ws || ws.readyState !== WebSocket.OPEN) return;
+    const current = readTerminalPartialCommand(terminal);
+    const suffix = completionSuffix(current, suggestion);
+    if (!suffix) return;
+    ws.send(suffix);
+    window.requestAnimationFrame(refreshSuggestions);
+  };
 
   useEffect(() => {
     return registerTerminalRunner(session.serverId, (command) =>
@@ -212,14 +250,70 @@ function SessionPane({
     };
 
     const onData = terminal.onData((input) => {
+      if (input.includes("\r") || input === "\n") {
+        const command = readTerminalPartialCommand(terminal);
+        if (command.trim()) {
+          pushTerminalHistory(session.serverId, command.trim());
+        }
+        setSuggestions([]);
+        setPartial("");
+        setActiveSuggestionIndex(0);
+      }
+
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(input);
       }
+
+      window.requestAnimationFrame(refreshSuggestions);
+    });
+
+    terminal.attachCustomKeyEventHandler((event) => {
+      const wsCurrent = wsRef.current;
+      const term = terminalRef.current;
+      if (!term || !wsCurrent || wsCurrent.readyState !== WebSocket.OPEN) {
+        return true;
+      }
+
+      const currentSuggestions = suggestionsRef.current;
+      if (
+        currentSuggestions.length > 0 &&
+        (event.key === "ArrowDown" || event.key === "ArrowUp")
+      ) {
+        event.preventDefault();
+        setActiveSuggestionIndex((index) => {
+          if (event.key === "ArrowDown") {
+            return Math.min(index + 1, currentSuggestions.length - 1);
+          }
+          return Math.max(index - 1, 0);
+        });
+        return false;
+      }
+
+      if (
+        event.key === "Tab" &&
+        !event.shiftKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !event.metaKey
+      ) {
+        const current = readTerminalPartialCommand(term);
+        const matches = findTerminalSuggestions(session.serverId, current);
+        if (matches.length === 0) return true;
+
+        event.preventDefault();
+        const pick =
+          matches[activeSuggestionIndexRef.current] ?? matches[0] ?? "";
+        if (pick) applySuggestion(pick);
+        return false;
+      }
+
+      return true;
     });
 
     return () => {
       disposed = true;
       onData.dispose();
+      terminal.attachCustomKeyEventHandler(() => true);
       ws.close();
       wsRef.current = null;
       runCommandRef.current = () => false;
@@ -247,12 +341,20 @@ function SessionPane({
 
   return (
     <div
-      ref={containerRef}
       className={cn(
         "terminal-widget-host absolute inset-0 overflow-hidden p-1",
         !active && "invisible pointer-events-none",
       )}
-    />
+    >
+      <div ref={containerRef} className="h-full w-full" />
+      {active && suggestions.length > 0 && (
+        <TerminalSuggestionBar
+          suggestions={suggestions}
+          partial={partial}
+          activeIndex={activeSuggestionIndex}
+        />
+      )}
+    </div>
   );
 }
 
@@ -278,6 +380,11 @@ export function TerminalWidget({
       {sessions.length === 0 && (
         <p className="mb-2 text-sm text-[var(--color-muted-foreground)]">
           {t("terminal.emptyHint")}
+        </p>
+      )}
+      {sessions.length > 0 && (
+        <p className="mb-2 text-[11px] text-[var(--color-muted-foreground)]">
+          {t("terminal.suggestHint")}
         </p>
       )}
       <div className="relative min-h-0 flex-1">
