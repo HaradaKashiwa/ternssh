@@ -5,7 +5,7 @@
 <h1 align="center">ternssh</h1>
 
 <p align="center">
-  Multi-user SSH workspace on Cloudflare<br />
+  SSH workspace on Cloudflare<br />
   Draggable dashboard · Terminal · SFTP · Status monitoring
 </p>
 
@@ -34,7 +34,7 @@
 **ternssh** is an SSH management tool that runs on Cloudflare Edge. Users build their own SSH workspace with draggable dashboard widgets—server list, terminal, file manager, status monitoring, and more.
 
 - **Open mode**: No login required; ideal for local or private-network deployments
-- **Access mode**: Cloudflare Access integration with per-user data isolation
+- **Access mode**: Cloudflare Access gate (JWT verification); authenticated users share the same servers and layout
 
 ## Features
 
@@ -61,7 +61,7 @@
 | Real-time | Durable Objects | One DO instance per SSH session; WebSocket long connections |
 | SSH protocol | Custom TypeScript stack | Handshake, shell, SFTP, remote command execution |
 | Database | Cloudflare D1 | Users, servers, layout, credentials, sessions, etc. |
-| Auth (optional) | Cloudflare Access | Edge JWT validation; users isolated by email |
+| Auth (optional) | Cloudflare Access | Edge JWT validation; shared workspace after login |
 | DNS | Cloudflare 1.1.1.1 DoH | Hostname resolution (skipped for direct IP) |
 
 ## Quick Start
@@ -310,7 +310,7 @@ flowchart TB
 | Mode | Condition | Behavior |
 |------|-----------|----------|
 | **Open mode** | `ACCESS_ENABLED=false` | No login; data belongs to built-in user `default` |
-| **Access mode** | Cloudflare Access configured | Edge JWT validation; users auto-created and isolated by email |
+| **Access mode** | Cloudflare Access configured | Validates JWT; all authorized users share the same servers and layout |
 
 ### Responsibilities
 
@@ -413,7 +413,7 @@ Reset all clears localStorage preferences and calls `POST /api/v1/me/reset` to w
 ## Security
 
 - **Open mode** has no application-layer authentication—do not expose sensitive environments on the public internet
-- **Access mode** scopes all D1 queries with `user_id`
+- Access mode is a login gate only; all verified requests use the built-in `default` user data
 - SSH passwords/keys are stored in D1 `credentials` (per server); vault entries in `saved_passwords` / `saved_private_keys`
 - Full-site HTTPS / WSS; DO instances isolated per session
 

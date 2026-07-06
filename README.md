@@ -5,7 +5,7 @@
 <h1 align="center">ternssh</h1>
 
 <p align="center">
-  基于 Cloudflare 的多用户 SSH 工作台<br />
+  基于 Cloudflare 的 SSH 工作台<br />
   可拖拽仪表盘 · 终端 · SFTP · 状态监控
 </p>
 
@@ -34,7 +34,7 @@
 **ternssh** 是一款运行在 Cloudflare Edge 上的 SSH 管理工具。用户通过可拖拽的仪表盘组件（服务器列表、终端、文件管理、状态监控等）构建属于自己的 SSH 工作台。
 
 - **开放模式**：无需登录，适合个人本地或内网部署
-- **Access 模式**：接入 Cloudflare Access，多用户数据隔离
+- **Access 模式**：Cloudflare Access 门禁（JWT 校验），通过后共享同一套服务器数据
 
 ## 功能特性
 
@@ -61,7 +61,7 @@
 | 实时连接 | Durable Objects | 每个 SSH 会话一个 DO 实例，WebSocket 长连接 |
 | SSH 协议 | 自研 TypeScript 栈 | 握手、Shell、SFTP、远程命令执行 |
 | 数据库 | Cloudflare D1 | 用户、服务器、布局、凭据、会话等 |
-| 认证（可选） | Cloudflare Access | 边缘 JWT 校验，按 email 隔离用户 |
+| 认证（可选） | Cloudflare Access | 边缘 JWT 校验；通过后使用共享工作区 |
 | DNS | Cloudflare 1.1.1.1 DoH | 域名主机名解析（IP 直连则跳过） |
 
 ## 快速开始
@@ -310,7 +310,7 @@ flowchart TB
 | 模式 | 条件 | 行为 |
 |------|------|------|
 | **开放模式** | `ACCESS_ENABLED=false` | 无需登录；数据归属内置用户 `default` |
-| **Access 模式** | 已配置 Cloudflare Access | 边缘校验 JWT；按 email 自动创建用户并隔离数据 |
+| **Access 模式** | 已配置 Cloudflare Access | 校验 JWT；通过 Access 的用户共享同一服务器与布局 |
 
 ### 职责划分
 
@@ -413,7 +413,7 @@ npm run db:migrate         # 远程（deploy 已包含）
 ## 安全说明
 
 - **开放模式**无应用层认证，请勿在公网暴露敏感环境
-- **Access 模式**下所有 D1 查询带 `user_id` 条件
+- Access 模式仅作登录门禁，所有通过校验的请求使用内置用户 `default` 的数据
 - SSH 密码/私钥存于 D1 `credentials` 表（按服务器引用）；vault 条目存于 `saved_passwords` / `saved_private_keys`
 - 全站 HTTPS / WSS；DO 实例按 session 隔离
 

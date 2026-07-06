@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FolderPlus, ChevronsDown, ChevronsUp, Plus, Settings, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { api, type Dashboard, type MeResponse, type Server, type TreeNode } from "@/lib/api";
+import { api, type Dashboard, type Server, type TreeNode } from "@/lib/api";
 import {
   getSessionsForServer,
   isSessionAlive,
@@ -83,7 +83,6 @@ function layoutToWidgets(
 export function DashboardView() {
   const { t } = useI18n();
   const { gridMargin } = usePersonalization();
-  const [me, setMe] = useState<MeResponse | null>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [layout, setLayout] = useState<GridItem[]>([]);
   const [tree, setTree] = useState<TreeNode[]>([]);
@@ -159,10 +158,6 @@ export function DashboardView() {
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    void api.getMe().then(setMe).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -747,13 +742,6 @@ export function DashboardView() {
               onAdd={handleAddWidget}
               disabled={loading}
             />
-            {me && (
-              <Badge>
-                {me.authMode === "open"
-                  ? `${t("header.openMode")} · ${me.user.display_name ?? "Default"}`
-                  : me.user.email ?? me.user.display_name ?? me.user.id}
-              </Badge>
-            )}
           </>
         }
       />

@@ -24,7 +24,6 @@ export const en: Messages = {
   },
   header: {
     addWidget: "Add widget",
-    openMode: "Open mode",
     settings: "Settings",
     settingsGeneral: "General",
     settingsGeneralHint: "Language and other basic options",

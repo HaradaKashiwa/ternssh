@@ -22,7 +22,6 @@ export const zh = {
   },
   header: {
     addWidget: "添加组件",
-    openMode: "开放模式",
     settings: "设置",
     settingsGeneral: "通用",
     settingsGeneralHint: "语言等基础选项",
