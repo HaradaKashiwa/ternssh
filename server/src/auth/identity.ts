@@ -14,30 +14,59 @@ function isAccessEnabled(env: Env): boolean {
   return String(env.ACCESS_ENABLED).toLowerCase() === "true";
 }
 
+function normalizeTeamDomain(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, "");
+}
+
+function normalizeAud(raw: string): string {
+  return raw.trim();
+}
+
 async function verifyAccessJwt(
   token: string,
   env: Env,
 ): Promise<{ email: string }> {
   if (!env.ACCESS_TEAM_DOMAIN || !env.ACCESS_AUD) {
-    throw new Error("ACCESS_TEAM_DOMAIN and ACCESS_AUD must be configured");
+    throw new IdentityError(
+      "ACCESS_TEAM_DOMAIN and ACCESS_AUD must be configured",
+      500,
+    );
   }
 
-  const issuer = `https://${env.ACCESS_TEAM_DOMAIN}`;
+  const teamDomain = normalizeTeamDomain(env.ACCESS_TEAM_DOMAIN);
+  const audience = normalizeAud(env.ACCESS_AUD);
+  const issuer = `https://${teamDomain}`;
   const jwks = createRemoteJWKSet(
     new URL(`${issuer}/cdn-cgi/access/certs`),
   );
 
-  const { payload } = await jwtVerify(token, jwks, {
-    issuer,
-    audience: env.ACCESS_AUD,
-  });
+  try {
+    const { payload } = await jwtVerify(token, jwks, {
+      issuer,
+      audience,
+    });
 
-  const email = typeof payload.email === "string" ? payload.email : null;
-  if (!email) {
-    throw new Error("Access JWT missing email claim");
+    const email = typeof payload.email === "string" ? payload.email : null;
+    if (!email) {
+      throw new IdentityError(
+        "Access JWT missing email claim (service tokens are not supported)",
+        401,
+      );
+    }
+
+    return { email };
+  } catch (error) {
+    if (error instanceof IdentityError) {
+      throw error;
+    }
+
+    const message =
+      error instanceof Error ? error.message : "Access JWT verification failed";
+    throw new IdentityError(`Access JWT verification failed: ${message}`, 401);
   }
-
-  return { email };
 }
 
 export async function resolveUser(request: Request, env: Env): Promise<User> {
