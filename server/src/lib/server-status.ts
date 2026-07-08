@@ -126,12 +126,12 @@ END {
 export function buildLightStatusCommand(): string {
   return [
     'echo "LOAD:$(cut -d" " -f1-3 /proc/loadavg 2>/dev/null)"',
-    'echo "CPU:$(awk \'/^cpu / {print $2+$3+$4+$5+$6+$7+$8+$9, $5+$6; exit}\' /proc/stat 2>/dev/null)"',
+    'echo "CPU:$(awk \'/^cpu / {printf "%.0f %.0f", $2+$3+$4+$5+$6+$7+$8+$9, $5+$6; exit}\' /proc/stat 2>/dev/null)"',
     'echo "NCPU:$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null)"',
     'MT=$(awk \'/MemTotal/ {print $2; exit}\' /proc/meminfo 2>/dev/null); MA=$(awk \'/MemAvailable/ {print $2; exit}\' /proc/meminfo 2>/dev/null); [ -n "$MA" ] || MA=$(awk \'/MemFree/ {print $2; exit}\' /proc/meminfo 2>/dev/null); echo "MEM:${MT} ${MA}"',
     'echo "DISK:$(df -Pk / 2>/dev/null | awk \'NR==2 {print $2, $3, $4; exit}\')"',
-    'echo "NET:$(awk \'$1 ~ /:/ {gsub(/:/,"",$1); if ($1!="lo") {rx+=$2; tx+=$10}} END {print rx, tx}\' /proc/net/dev 2>/dev/null)"',
-    'awk \'$1 ~ /:/ {gsub(/:/,"",$1); if ($1!="lo") print "IF:"$1" "$2" "$10}\' /proc/net/dev 2>/dev/null',
+    'echo "NET:$(awk \'$1 ~ /:/ {gsub(/:/,"",$1); if ($1!="lo") {rx+=$2; tx+=$10}} END {printf "%.0f %.0f", rx+0, tx+0}\' /proc/net/dev 2>/dev/null)"',
+    'awk \'$1 ~ /:/ {gsub(/:/,"",$1); if ($1!="lo") printf "IF:%s %.0f %.0f\\n", $1, $2+0, $10+0}\' /proc/net/dev 2>/dev/null',
     'echo "UPTIME:$(cut -d" " -f1 /proc/uptime 2>/dev/null)"',
     'echo "OS:$(uname -sr 2>/dev/null)"',
   ].join("; ");
