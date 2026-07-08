@@ -33,27 +33,8 @@
 
 ---
 
-**ternssh** 是一款运行在 Cloudflare Edge 上的 SSH 管理工具。完整文档见 **[Wiki](https://github.com/HaradaKashiwa/ternssh/wiki)**。
+**ternssh** 是一款运行在 Cloudflare Edge 上的 SSH 管理工具。完整文档见 **[文档](https://ternssh.com/docs/home)**。
 
 ## 部署
 
-详见 [Wiki · 部署](https://github.com/HaradaKashiwa/ternssh/wiki/zh-Deployment)。
-
-## 鉴权
-
-默认**开放模式**，无需登录。生产环境建议启用 **Cloudflare Access**（Workers）或 **HTTP Basic Auth**（Docker / 自托管）。
-
-- **Cloudflare Access**：Zero Trust 创建 Self-hosted 应用，在 Worker 变量中设置 `ACCESS_TEAM_DOMAIN` 与 `ACCESS_AUD`
-- **HTTP Basic Auth**：同时设置 `BASICAUTH_USERNAME` 与 `BASICAUTH_PASSWORD`（Workers Dashboard 或 Docker 环境变量）
-
-详见 [Wiki · 鉴权](https://github.com/HaradaKashiwa/ternssh/wiki/zh-Security#鉴权)。
-
-## Star History
-
-<a href="https://www.star-history.com/?type=date&repos=HaradaKashiwa%2Fternssh">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=HaradaKashiwa/ternssh&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=HaradaKashiwa/ternssh&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=HaradaKashiwa/ternssh&type=date&legend=top-left" />
- </picture>
-</a>
+详见 [部署指南](https://ternssh.com/docs/deployment)。
