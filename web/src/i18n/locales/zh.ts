@@ -379,7 +379,10 @@ export const zh = {
   },
   ai: {
     settingsTitle: "AI 命令生成",
-    settingsHint: "本组件的 OpenAI 兼容 API 配置，随仪表盘布局一起保存。",
+    settingsHint: "OpenAI 兼容 API 配置，保存在账号数据库中。",
+    settingsLoading: "正在加载设置…",
+    settingsLoadFailed: "加载 AI 设置失败",
+    settingsSaveFailed: "保存 AI 设置失败",
     apiBaseUrl: "API 地址",
     apiBaseUrlHint:
       "OpenAI 兼容接口地址，例如 https://api.openai.com/v1 或代理地址",

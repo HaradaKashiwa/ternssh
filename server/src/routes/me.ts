@@ -2,6 +2,11 @@ import { Hono } from "hono";
 import { getAuthMode } from "../auth/identity";
 import { SITE_NAME_MAX_LENGTH } from "../db/site-name";
 import { resetUserData } from "../db/reset-user-data";
+import {
+  deleteUserAiSettings,
+  getUserAiSettings,
+  updateUserAiSettings,
+} from "../db/user-ai-settings";
 import { updateUserSiteName } from "../db/users";
 import type { Variables } from "../types";
 
@@ -43,6 +48,49 @@ meRoutes.put("/site-name", async (c) => {
       {
         error:
           error instanceof Error ? error.message : "Failed to update site name",
+      },
+      500,
+    );
+  }
+});
+
+meRoutes.get("/ai-settings", async (c) => {
+  const user = c.get("user");
+  const settings = await getUserAiSettings(c.env.DB, user.id);
+  return c.json({ settings });
+});
+
+meRoutes.put("/ai-settings", async (c) => {
+  const user = c.get("user");
+  const body = (await c.req.json().catch(() => null)) as {
+    apiBaseUrl?: unknown;
+    apiKey?: unknown;
+    model?: unknown;
+  } | null;
+
+  if (typeof body?.apiBaseUrl !== "string") {
+    return c.json({ error: "API base URL is required" }, 400);
+  }
+  if (typeof body.apiKey !== "string") {
+    return c.json({ error: "API key is required" }, 400);
+  }
+  if (typeof body.model !== "string") {
+    return c.json({ error: "Model is required" }, 400);
+  }
+
+  try {
+    const settings = await updateUserAiSettings(c.env.DB, user.id, {
+      apiBaseUrl: body.apiBaseUrl,
+      apiKey: body.apiKey,
+      model: body.model,
+    });
+    return c.json({ settings });
+  } catch (error) {
+    console.error("update ai settings failed", error);
+    return c.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to update AI settings",
       },
       500,
     );

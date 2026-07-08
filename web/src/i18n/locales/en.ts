@@ -392,7 +392,10 @@ export const en: Messages = {
   ai: {
     settingsTitle: "AI command generator",
     settingsHint:
-      "OpenAI-compatible API settings for this widget. Saved with your dashboard layout.",
+      "OpenAI-compatible API settings stored in your account database.",
+    settingsLoading: "Loading settings…",
+    settingsLoadFailed: "Failed to load AI settings",
+    settingsSaveFailed: "Failed to save AI settings",
     apiBaseUrl: "API base URL",
     apiBaseUrlHint:
       "OpenAI-compatible endpoint, e.g. https://api.openai.com/v1 or a proxy URL",

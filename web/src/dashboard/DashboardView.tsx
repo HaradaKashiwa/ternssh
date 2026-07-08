@@ -1119,7 +1119,6 @@ export function DashboardView() {
               <AiCommandWidget
                 activeServerId={activeServerId}
                 activeSessionId={activeSessionId}
-                configJson={widget.config_json}
                 sessions={sessions}
               />
             );
@@ -1238,7 +1237,7 @@ export function DashboardView() {
       />
 
       <AiCommandSettingsDialog
-        configJson={
+        legacyConfigJson={
           dashboard.widgets.find(
             (widget) => widget.id === aiSettingsWidgetId,
           )?.config_json ?? null
@@ -1247,9 +1246,9 @@ export function DashboardView() {
         onOpenChange={(open) => {
           if (!open) setAiSettingsWidgetId(null);
         }}
-        onSaved={(configJson) => {
+        onLegacyMigrated={() => {
           if (aiSettingsWidgetId) {
-            handleWidgetConfigChange(aiSettingsWidgetId, configJson);
+            handleWidgetConfigChange(aiSettingsWidgetId, "{}");
           }
         }}
       />

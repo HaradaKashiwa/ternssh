@@ -1,4 +1,5 @@
 import type { SessionStatusResponse } from "./server-status";
+import type { AiSettings } from "./ai-settings";
 
 export interface User {
   id: string;
@@ -147,6 +148,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   getMe: () => request<MeResponse>("/api/v1/me"),
+  getAiSettings: () =>
+    request<{ settings: AiSettings }>("/api/v1/me/ai-settings"),
+  updateAiSettings: (input: AiSettings) =>
+    request<{ settings: AiSettings }>("/api/v1/me/ai-settings", {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
   updateSiteName: (siteName: string) =>
     request<{ user: User }>("/api/v1/me/site-name", {
       method: "PUT",
@@ -273,9 +281,6 @@ export const api = {
     input: {
       prompt: string;
       history?: string[];
-      apiBaseUrl: string;
-      apiKey: string;
-      model: string;
     },
     options?: { signal?: AbortSignal },
   ) =>

@@ -1,13 +1,15 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, Send, Sparkles, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n";
 import { AiCommandError, generateShellCommand } from "@/lib/ai-command";
 import {
+  AI_SETTINGS_CHANGED_EVENT,
   isAiConfigured,
-  parseAiCommandConfig,
-} from "@/lib/ai-command-config";
+  type AiSettings,
+} from "@/lib/ai-settings";
+import { api } from "@/lib/api";
 import {
   getPrimarySessionForServer,
   isSessionAlive,
@@ -21,7 +23,6 @@ export interface AiCommandWidgetProps {
   activeServerId: string | null;
   activeSessionId: string | null;
   sessions: Record<string, ServerSession>;
-  configJson: string | null;
 }
 
 function sessionStatusLabel(
@@ -36,17 +37,30 @@ export function AiCommandWidget({
   activeServerId,
   activeSessionId,
   sessions,
-  configJson,
 }: AiCommandWidgetProps) {
   const t = useT();
-  const config = useMemo(() => parseAiCommandConfig(configJson), [configJson]);
-  const configured = isAiConfigured(config);
+  const [aiSettings, setAiSettings] = useState<AiSettings | null>(null);
+  const configured = aiSettings ? isAiConfigured(aiSettings) : false;
   const [prompt, setPrompt] = useState("");
   const [generatedCommand, setGeneratedCommand] = useState("");
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [sent, setSent] = useState(false);
+
+  const loadSettings = useCallback(() => {
+    void api
+      .getAiSettings()
+      .then(({ settings }) => setAiSettings(settings))
+      .catch(() => setAiSettings(null));
+  }, []);
+
+  useEffect(() => {
+    loadSettings();
+    const sync = () => loadSettings();
+    window.addEventListener(AI_SETTINGS_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(AI_SETTINGS_CHANGED_EVENT, sync);
+  }, [loadSettings]);
 
   const session =
     activeSessionId && sessions[activeSessionId]?.serverId === activeServerId
@@ -82,7 +96,6 @@ export function AiCommandWidget({
       const command = await generateShellCommand({
         prompt: trimmedPrompt,
         history,
-        settings: config,
       });
       setGeneratedCommand(command);
     } catch (err) {
@@ -101,7 +114,7 @@ export function AiCommandWidget({
     } finally {
       setGenerating(false);
     }
-  }, [config, configured, history, prompt, t]);
+  }, [configured, history, prompt, t]);
 
   const handleSend = useCallback(() => {
     if (!activeServerId) {

@@ -1,4 +1,5 @@
 import { resetDefaultDashboard, type DashboardWithWidgets } from "./dashboards";
+import { deleteUserAiSettings } from "./user-ai-settings";
 import { resetUserSiteName } from "./users";
 
 async function tableExists(db: D1Database, name: string): Promise<boolean> {
@@ -42,6 +43,10 @@ export async function resetUserData(
       .prepare("DELETE FROM saved_private_keys WHERE user_id = ?")
       .bind(userId)
       .run();
+  }
+
+  if (await tableExists(db, "user_ai_settings")) {
+    await deleteUserAiSettings(db, userId);
   }
 
   await resetUserSiteName(db, userId);

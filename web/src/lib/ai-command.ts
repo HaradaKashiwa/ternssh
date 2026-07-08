@@ -1,10 +1,8 @@
 import { api } from "@/lib/api";
-import type { AiCommandWidgetConfig } from "@/lib/ai-command-config";
 
 export interface GenerateCommandOptions {
   prompt: string;
   history?: string[];
-  settings: AiCommandWidgetConfig;
   signal?: AbortSignal;
 }
 
@@ -23,25 +21,11 @@ export async function generateShellCommand(
     throw new AiCommandError("Prompt is required");
   }
 
-  const apiKey = options.settings.apiKey.trim();
-  const model = options.settings.model.trim();
-  const apiBaseUrl = options.settings.apiBaseUrl.trim();
-
-  if (!apiBaseUrl || !apiKey) {
-    throw new AiCommandError("AI API is not configured");
-  }
-  if (!model) {
-    throw new AiCommandError("AI model is not configured");
-  }
-
   try {
     const response = await api.generateAiCommand(
       {
         prompt,
         history: options.history,
-        apiBaseUrl,
-        apiKey,
-        model,
       },
       { signal: options.signal },
     );
