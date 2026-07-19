@@ -25,8 +25,10 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 const NO_INDEX_HEADER = "noindex, nofollow, noarchive";
 
-function isOnboardingPublicApiPath(pathname: string): boolean {
-  return pathname.startsWith("/api/v1/onboarding/");
+function isPublicApiPath(pathname: string): boolean {
+  return (
+    pathname === "/api/health" || pathname.startsWith("/api/v1/onboarding/")
+  );
 }
 
 app.use(
@@ -47,8 +49,13 @@ app.use("*", async (c, next) => {
     c.header("X-Robots-Tag", NO_INDEX_HEADER);
   };
 
+  if (pathname.startsWith("/api/") && isPublicApiPath(pathname)) {
+    await next();
+    return;
+  }
+
   if (mode === "onboarding") {
-    if (pathname.startsWith("/api/") && !isOnboardingPublicApiPath(pathname)) {
+    if (pathname.startsWith("/api/")) {
       applyNoIndex();
       return c.json({ error: "Setup required", authMode: "onboarding" }, 403);
     }
